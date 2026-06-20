@@ -1,5 +1,38 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+async function callHuggingFace(prompt) {
+  const hfToken = process.env.HUGGINGFACE_API_TOKEN;
+  if (!hfToken) throw new Error('HUGGINGFACE_API_TOKEN tidak dikonfigurasi');
+
+  const modelName = process.env.HF_MODEL || 'google/flan-t5-large';
+  const res = await fetch(`https://api-inference.huggingface.co/models/${modelName}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${hfToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: 512 } }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
+  }
+
+  const data = await res.json();
+
+  // Handle various response shapes
+  if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
+  if (data.generated_text) return data.generated_text;
+  if (typeof data === 'string') return data;
+
+  // Some models return an object with 'error' or other fields
+  if (data.error) throw new Error(`HuggingFace error: ${data.error}`);
+
+  // Fallback: try to stringify
+  return JSON.stringify(data);
+}
+
 export async function POST(request) {
   try {
     const { transcript, language } = await request.json();
@@ -50,8 +83,21 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
   ]
 }`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    let responseText;
+    try {
+      const result = await model.generateContent(prompt);
+      responseText = result.response.text();
+    } catch (gErr) {
+      console.error('Google Generative AI error:', gErr);
+      // Fallback to Hugging Face if token is available
+      try {
+        responseText = await callHuggingFace(prompt);
+      } catch (hfErr) {
+        console.error('HuggingFace fallback error:', hfErr);
+        // rethrow original Google error if no HF or HF also failed
+        throw new Error(gErr.message || gErr);
+      }
+    }
 
     // Clean response — remove markdown code blocks if present
     let cleaned = responseText.trim();
