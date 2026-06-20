@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
-  Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History
+  Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History, Clipboard
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '../../rca/rca.css';
@@ -54,9 +54,23 @@ export default function RCAHistoryPage() {
   }, [reports, filterDateFrom, filterDateTo, filterName, filterNip, filterTitle]);
 
   const selectReport = (report) => {
-    setSelectedReport(report);
+    setSelectedReport(normalizeReport(report));
   };
 
+  const normalizeReport = (report) => ({
+    ...report,
+    penyebab: Array.isArray(report.penyebab) ? report.penyebab : [],
+    tindakan: Array.isArray(report.tindakan)
+      ? report.tindakan.map((item) =>
+          typeof item === 'string'
+            ? { text: item, done: false }
+            : {
+                text: item?.text ?? item ?? '',
+                done: Boolean(item?.done),
+              }
+        )
+      : [],
+  });
   const updateSelected = (field, value) => {
     setSelectedReport((prev) => ({ ...prev, [field]: value }));
   };
@@ -66,6 +80,13 @@ export default function RCAHistoryPage() {
       const updated = [...(prev[field] || [])];
       updated[index] = value;
       return { ...prev, [field]: updated };
+    });
+  };
+  const toggleTindakan = (index) => {
+    setSelectedReport((prev) => {
+      const updated = [...(prev.tindakan || [])];
+      updated[index] = { ...updated[index], done: !updated[index]?.done };
+      return { ...prev, tindakan: updated };
     });
   };
 
@@ -96,11 +117,11 @@ export default function RCAHistoryPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            ...selectedReport,
-            updated_by_user_id: null,
-            updated_by_user_name: null,
-            updated_by_role: null,
-          }),
+          ...selectedReport,
+          updated_by_user_id: null,
+          updated_by_user_name: null,
+          updated_by_role: null,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -108,13 +129,41 @@ export default function RCAHistoryPage() {
       }
       const updated = await res.json();
       setReports((prev) => prev.map((report) => (report.id === updated.id ? updated : report)));
-      setSelectedReport(updated);
+      setSelectedReport(normalizeReport(updated));
       toast.success('Laporan berhasil diperbarui');
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'Gagal memperbarui laporan.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+
+  const copySelectedReportText = async () => {
+    if (!selectedReport) return;
+
+    const template = `*LAPORAN RCA*
+
+Nama Pelapor: ${selectedReport.name || '-'}
+NIP Pelapor: ${selectedReport.nip || '-'}
+Judul: ${selectedReport.judul || '-'}
+Ringkasan: ${selectedReport.ringkasan || '-'}
+Root Cause: ${selectedReport.root_cause || '-'}
+
+Faktor Penyebab:
+${(selectedReport.penyebab || []).map((p, i) => `${i + 1}. ${p}`).join('\n') || '-'}
+
+Tindakan:
+${(selectedReport.tindakan || []).map((t, i) => `${i + 1}. ${t.done ? '[x]' : '[ ]'} ${t.text}`).join('\n') || '-'}
+`;
+
+    try {
+      await navigator.clipboard.writeText(template);
+      toast.success('Teks laporan berhasil disalin.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal menyalin teks.');
     }
   };
 
@@ -155,7 +204,7 @@ export default function RCAHistoryPage() {
             </div>
           </div>
 
-          <div className="rca-history-panel">
+          <div className="rca-history-grid">
             <div className="rca-history-card">
               <div className="card-label">
                 <Search size={14} />
@@ -233,10 +282,8 @@ export default function RCAHistoryPage() {
                 )}
               </div>
             </div>
-          </div>
 
-          <div className="rca-history-panel">
-            <div className="rca-history-card" style={{ width: '100%' }}>
+            <div className="rca-history-card rca-history-detail-card">
               <div className="card-label">
                 <Edit3 size={14} /> Detail Laporan
               </div>
@@ -282,8 +329,26 @@ export default function RCAHistoryPage() {
                     <label className="rca-field-label">Tindakan</label>
                     <div className="rca-list-field">
                       {(selectedReport.tindakan || []).map((item, idx) => (
-                        <div key={idx} className="rca-list-item">
-                          <input type="text" className={item.done ? 'done-text' : ''} value={item.text} onChange={(e) => updateArrayField('tindakan', idx, { ...item, text: e.target.value })} />
+                        <div key={idx} className={`rca-list-item ${item.done ? 'done-action-item' : ''}`}>
+                          <button
+                            type="button"
+                            className="rca-checkbox-btn"
+                            onClick={() => toggleTindakan(idx)}
+                            aria-label={item.done ? 'Tandai belum selesai' : 'Tandai selesai'}
+                          >
+                            <input
+                              type="checkbox"
+                              className="rca-checkbox"
+                              checked={item.done}
+                              readOnly
+                            />
+                          </button>
+                          <input
+                            type="text"
+                            className={item.done ? 'done-text' : ''}
+                            value={item.text}
+                            onChange={(e) => updateArrayField('tindakan', idx, { ...item, text: e.target.value })}
+                          />
                           <button className="rca-remove-btn" onClick={() => removeArrayItem('tindakan', idx)} title="Hapus">
                             <X size={16} />
                           </button>
@@ -295,6 +360,9 @@ export default function RCAHistoryPage() {
                     </div>
                   </div>
                   <div className="rca-actions">
+                    <button className="rca-btn rca-btn-copy" type="button" onClick={copySelectedReportText}>
+                      <Clipboard size={14} /> Salin Teks
+                    </button>
                     <button className="rca-btn rca-btn-save" onClick={handleSave} disabled={isSaving}>
                       <Save size={14} /> Simpan Perubahan
                     </button>

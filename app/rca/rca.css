@@ -445,7 +445,7 @@ textarea.rca-field-input {
 
 .rca-list-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-sm);
 }
 
@@ -473,6 +473,10 @@ textarea.rca-field-input {
   color: var(--text-muted);
 }
 
+.rca-list-item.done-action-item {
+  opacity: 0.85;
+}
+
 /* Custom checkbox for tindakan */
 .rca-checkbox-wrapper {
   position: relative;
@@ -481,6 +485,19 @@ textarea.rca-field-input {
   justify-content: center;
   width: 32px;
   height: 36px;
+  flex-shrink: 0;
+}
+
+.rca-checkbox-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
   flex-shrink: 0;
 }
 
@@ -657,6 +674,7 @@ textarea.rca-field-input {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  min-width: 0;
 }
 
 .rca-history-card .card-label {
@@ -684,9 +702,30 @@ textarea.rca-field-input {
 
 .rca-history-panel {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: clamp(320px, 32%, 420px) minmax(0, 1fr);
   gap: var(--space-lg);
   width: 100%;
+  align-items: start;
+}
+
+/* Explicit 3-column layout for history: Filters | List | Detail */
+.rca-history-grid {
+  display: grid;
+  grid-template-columns: clamp(280px, 22%, 360px) 1fr clamp(320px, 30%, 420px);
+  gap: var(--space-lg);
+  width: 100%;
+  align-items: start;
+}
+
+.rca-history-grid .rca-history-card {
+  width: 100%;
+}
+
+@media (max-width: 1160px) {
+  .rca-history-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
 }
 
 .rca-history-filters {
@@ -696,9 +735,10 @@ textarea.rca-field-input {
   margin-top: var(--space-md);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1160px) {
   .rca-history-panel {
     grid-template-columns: 1fr;
+    gap: var(--space-md);
   }
 
   .rca-history-filters {
@@ -712,6 +752,12 @@ textarea.rca-field-input {
   .rca-history-table {
     min-width: 100%;
   }
+}
+
+/* If a history panel immediately follows another, place its card into the second column
+   so the Detail card appears on the right side next to Filters/List on wide screens. */
+.rca-history-panel + .rca-history-panel .rca-history-card {
+  grid-column: 2 / 3;
 }
 
 @media (max-width: 640px) {
@@ -731,6 +777,34 @@ textarea.rca-field-input {
   margin-top: var(--space-md);
 }
 
+.rca-history-action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.rca-history-action-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.rca-history-action-item.done-action {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.rca-history-action-item span {
+  flex: 1;
+}
+
 .rca-history-table-wrapper {
   overflow-x: auto;
 }
@@ -738,7 +812,7 @@ textarea.rca-field-input {
 .rca-history-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  min-width: 100%;
 }
 
 .rca-history-table th,
