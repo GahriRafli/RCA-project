@@ -3,34 +3,20 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { useIncidents } from '@/lib/incidents';
 import {
-  LayoutDashboard, FileText, Plus, CheckSquare, Pin, MessageSquare,
-  Download, LogOut, Menu, X, AlertTriangle, Shield, Mic
+  LogOut, Menu, X, Shield, Mic, AlertTriangle
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { user, logout, hasRole } = useAuth();
-  const { incidents } = useIncidents();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   if (!user) return null;
 
-  const pendingCount = incidents.filter(i => i.workflow_status === 'Pending Review').length;
-
   const navItems = [
     { label: 'Main', type: 'section' },
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['maker', 'checker', 'superadmin'] },
     { href: '/rca', label: 'Laporan RCA', icon: Mic, roles: ['maker', 'checker', 'superadmin'] },
-    { href: '/incidents', label: 'Incidents', icon: FileText, roles: ['maker', 'checker', 'superadmin'] },
-    { href: '/incidents/new', label: 'Buat Incident', icon: Plus, roles: ['maker', 'superadmin'] },
-    { href: '/review', label: 'Review Queue', icon: CheckSquare, roles: ['checker', 'superadmin'], badge: pendingCount },
-
-    { label: 'Admin', type: 'section', roles: ['superadmin'] },
-    { href: '/admin/frequent', label: 'Frequent Incidents', icon: Pin, roles: ['superadmin'] },
-    { href: '/admin/whatsapp', label: 'WA Scheduler', icon: MessageSquare, roles: ['superadmin'] },
-    { href: '/admin/export', label: 'Export Center', icon: Download, roles: ['checker', 'superadmin'] },
   ];
 
   const filteredItems = navItems.filter(item => {
@@ -48,8 +34,8 @@ export default function Sidebar() {
           <Menu size={22} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div className="sidebar-logo" style={{ width: 30, height: 30, fontSize: '0.8rem' }}>RP</div>
-          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Remittance Portal</span>
+          <div className="sidebar-logo" style={{ width: 30, height: 30, fontSize: '0.8rem' }}>RCA</div>
+          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>App RCA</span>
         </div>
         <div style={{ width: 38 }} />
       </div>
@@ -60,10 +46,10 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside className={`sidebar ${open ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <div className="sidebar-logo">RP</div>
+          <div className="sidebar-logo">RCA</div>
           <div className="sidebar-brand">
-            <h1>Remittance Portal</h1>
-            <span>IT Operations</span>
+            <h1>App RCA</h1>
+            <span>Laporan RCA</span>
           </div>
           <button
             className="mobile-menu-btn"
@@ -81,7 +67,7 @@ export default function Sidebar() {
               return <div key={i} className="nav-section-label">{item.label}</div>;
             }
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
+            const isActive = pathname === item.href || pathname?.startsWith(item.href);
             return (
               <Link
                 key={item.href}

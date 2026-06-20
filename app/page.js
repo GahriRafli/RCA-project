@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) router.push('/dashboard');
+    if (user) router.push('/rca');
   }, [user, router]);
 
   if (user) return null;
@@ -36,7 +36,7 @@ export default function LoginPage() {
     await new Promise(r => setTimeout(r, 600));
     const result = login(nip, password);
     if (result.success) {
-      router.push('/dashboard');
+      router.push('/rca');
     } else {
       setError(result.error);
       setLoading(false);
@@ -51,9 +51,9 @@ export default function LoginPage() {
 
   const roleIcons = { maker: '👷', checker: '🔍', superadmin: '🛡️' };
   const roleDesc = {
-    maker: 'Input & manage incidents',
-    checker: 'Review & approve reports',
-    superadmin: 'Full system access',
+    maker: 'Akses laporan RCA dan perekaman suara',
+    checker: 'Review hasil RCA dan laporan',
+    superadmin: 'Akses penuh aplikasi RCA',
   };
 
   return (
@@ -68,8 +68,8 @@ export default function LoginPage() {
           <div className="logo-wrapper">
             <Shield size={28} />
           </div>
-          <h1>Remittance Portal</h1>
-          <p>IT Operations Incident Management</p>
+          <h1>App RCA</h1>
+          <p>Modul Laporan RCA untuk analisis akar masalah.</p>
         </div>
 
         {error && <div className="login-error">{error}</div>}

@@ -40,11 +40,20 @@ export async function POST(request) {
     const redis = getRedis();
     const body = await request.json();
 
+    if (!body.name || !body.name.trim() || !body.nip || !body.nip.trim()) {
+      return Response.json(
+        { error: 'Nama dan NIP wajib diisi untuk menyimpan laporan RCA' },
+        { status: 400 }
+      );
+    }
+
     const id = body.id || crypto.randomUUID();
     const now = new Date().toISOString();
 
     const report = {
       id,
+      name: body.name.trim(),
+      nip: body.nip.trim(),
       judul: body.judul || 'Laporan Tanpa Judul',
       ringkasan: body.ringkasan || '',
       root_cause: body.root_cause || '',

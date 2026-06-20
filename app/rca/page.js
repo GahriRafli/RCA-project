@@ -20,6 +20,8 @@ export default function RCALaporanPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [reportName, setReportName] = useState('');
+  const [reportNip, setReportNip] = useState('');
 
   // Riwayat Laporan
   const [history, setHistory] = useState([]);
@@ -206,12 +208,18 @@ export default function RCALaporanPage() {
   // Simpan Laporan ke Database
   const handleSaveReport = async () => {
     if (!result) return;
+    if (!reportName.trim() || !reportNip.trim()) {
+      toast.error('Nama dan NIP harus diisi sebelum menyimpan laporan.');
+      return;
+    }
 
     const payload = {
       ...result,
       id: activeReportId || undefined,
       transcript,
       language,
+      name: reportName.trim(),
+      nip: reportNip.trim(),
     };
 
     const loadingToast = toast.loading('Menyimpan laporan...');
@@ -281,6 +289,8 @@ export default function RCALaporanPage() {
       penyebab: report.penyebab || [],
       tindakan: report.tindakan || [],
     });
+    setReportName(report.name || '');
+    setReportNip(report.nip || '');
     setError('');
     toast.success('Laporan dimuat.');
   };
@@ -289,6 +299,8 @@ export default function RCALaporanPage() {
   const handleReset = () => {
     setTranscript('');
     setResult(null);
+    setReportName('');
+    setReportNip('');
     setActiveReportId(null);
     setError('');
     toast.success('Form telah direset.');
@@ -300,6 +312,8 @@ export default function RCALaporanPage() {
 
     const template = `*LAPORAN ROOT CAUSE ANALYSIS (RCA)*
 
+*Nama Pelapor:* ${reportName || '-'}
+*NIP Pelapor:* ${reportNip || '-'}
 *Judul:* ${result.judul || '-'}
 *Ringkasan:* ${result.ringkasan || '-'}
 
@@ -331,9 +345,9 @@ _Dibuat otomatis via App RCA_`;
                 <div className="header-icon">
                   <Mic size={18} />
                 </div>
-                Laporan Suara RCA
+                Aplikasi Laporan RCA
               </h2>
-              <p>Dokumentasikan insiden & buat Root Cause Analysis langsung dengan suara</p>
+              <p>Dokumentasikan insiden & buat Root Cause Analysis dengan suara atau teks.</p>
             </div>
           </div>
 
@@ -404,6 +418,34 @@ _Dibuat otomatis via App RCA_`;
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
                   placeholder="Ketik laporan Anda secara langsung di sini atau gunakan perekaman suara untuk mengisi otomatis."
+                />
+              </div>
+
+              <div className="rca-field-group">
+                <label className="rca-field-label">
+                  <div className="field-indicator orange" />
+                  Nama Pelapor (wajib untuk simpan)
+                </label>
+                <input
+                  type="text"
+                  className="rca-field-input"
+                  value={reportName}
+                  onChange={(e) => setReportName(e.target.value)}
+                  placeholder="Nama lengkap"
+                />
+              </div>
+
+              <div className="rca-field-group">
+                <label className="rca-field-label">
+                  <div className="field-indicator orange" />
+                  NIP Pelapor (wajib untuk simpan)
+                </label>
+                <input
+                  type="text"
+                  className="rca-field-input"
+                  value={reportNip}
+                  onChange={(e) => setReportNip(e.target.value.replace(/\D/g, ''))}
+                  placeholder="NIP hanya angka"
                 />
               </div>
 
