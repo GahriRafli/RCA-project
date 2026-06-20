@@ -125,12 +125,13 @@ export default function RCALaporanPage() {
   // Analisis otomatis dengan AI
   const handleAnalyze = async () => {
     if (!transcript.trim()) {
-      toast.error('Silakan isi transkrip atau rekam suara terlebih dahulu.');
+      toast.error('Silakan isi transkrip atau ketik laporan terlebih dahulu.');
       return;
     }
 
     setIsAnalyzing(true);
     setError('');
+    setResult(null);
 
     try {
       const res = await fetch('/api/rca/analyze', {
@@ -311,8 +312,7 @@ ${result.penyebab.length > 0 ? result.penyebab.map((p, i) => `${i + 1}. ${p}`).j
 *Tindakan Penyelesaian:*
 ${result.tindakan.length > 0 ? result.tindakan.map((t, i) => `${t.done ? '[x]' : '[ ]'} ${t.text}`).join('\n') : '-'}
 
-_Dibuat otomatis via Laporan Suara RCA_`;
-
+_Dibuat otomatis via App RCA_`;
     navigator.clipboard.writeText(template)
       .then(() => toast.success('Salin ke clipboard berhasil!'))
       .catch(() => toast.error('Gagal menyalin teks.'));
@@ -396,14 +396,14 @@ _Dibuat otomatis via Laporan Suara RCA_`;
               {/* Output Transkrip */}
               <div className="rca-transcript-area">
                 <div className="rca-transcript-label">
-                  <span>Transkrip Teks (Bisa Diedit):</span>
+                  <span>Transkrip Teks (Bisa Diedit / Ketik Manual):</span>
                   <span className="rca-transcript-count">{transcript.length} karakter</span>
                 </div>
                 <textarea
                   className="rca-transcript"
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
-                  placeholder="Hasil suara Anda akan ditranskripsikan langsung di sini... Atau ketik laporan Anda secara manual jika diinginkan."
+                  placeholder="Ketik laporan Anda secara langsung di sini atau gunakan perekaman suara untuk mengisi otomatis."
                 />
               </div>
 
@@ -451,7 +451,7 @@ _Dibuat otomatis via Laporan Suara RCA_`;
                     <Sparkles size={28} />
                   </div>
                   <h3>Belum Ada Hasil Analisis</h3>
-                  <p>Mulai dengan merekam suara atau ketik laporan Anda lalu klik tombol "Analisis dengan AI".</p>
+                  <p>Mulai dengan mengetik laporan Anda langsung atau merekam suara, lalu klik tombol "Analisis dengan AI".</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
