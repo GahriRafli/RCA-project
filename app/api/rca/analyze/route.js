@@ -88,7 +88,7 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
   } catch (err) {
     console.error('RCA Analyze Error:', err);
     return Response.json(
-      { error: 'Gagal menganalisis transkrip. Silakan coba lagi.' },
+      { error: `Gagal menganalisis transkrip: ${err.message || err}` },
       { status: 500 }
     );
   }
