@@ -1,20 +1,19 @@
-import { getRedis } from '@/lib/redis';
-
-const LIST_KEY = 'rca:reports:list';
-const reportKey = (id) => `rca:report:${id}`;
+import { supabase } from '@/lib/db';
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const redis = getRedis();
-    const data = await redis.get(reportKey(id));
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!data) {
+    if (error || !data) {
       return Response.json({ error: 'Laporan tidak ditemukan' }, { status: 404 });
     }
 
-    const report = typeof data === 'string' ? JSON.parse(data) : data;
-    return Response.json(report);
+    return Response.json(data);
   } catch (err) {
     console.error('RCA Report GET Error:', err);
     return Response.json({ error: 'Gagal mengambil laporan' }, { status: 500 });
@@ -24,25 +23,28 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const redis = getRedis();
-    const existing = await redis.get(reportKey(id));
+    const updates = await request.json();
 
-    if (!existing) {
+    const now = new Date().toISOString();
+    const updatedData = {
+      ...updates,
+      id, // Ensure ID is not overwritten
+      updated_at: now,
+    };
+
+    const { data, error } = await supabase
+      .from('reports')
+      .update(updatedData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase update error:', error);
       return Response.json({ error: 'Laporan tidak ditemukan' }, { status: 404 });
     }
 
-    const current = typeof existing === 'string' ? JSON.parse(existing) : existing;
-    const updates = await request.json();
-
-    const updated = {
-      ...current,
-      ...updates,
-      id, // Ensure ID is not overwritten
-      updated_at: new Date().toISOString(),
-    };
-
-    await redis.set(reportKey(id), JSON.stringify(updated));
-    return Response.json(updated);
+    return Response.json(data);
   } catch (err) {
     console.error('RCA Report PUT Error:', err);
     return Response.json({ error: 'Gagal memperbarui laporan' }, { status: 500 });
@@ -52,12 +54,16 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
-    const redis = getRedis();
 
-    const pipeline = redis.pipeline();
-    pipeline.del(reportKey(id));
-    pipeline.zrem(LIST_KEY, id);
-    await pipeline.exec();
+    const { error } = await supabase
+      .from('reports')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Supabase delete error:', error);
+      return Response.json({ error: 'Laporan tidak ditemukan' }, { status: 404 });
+    }
 
     return Response.json({ success: true });
   } catch (err) {
