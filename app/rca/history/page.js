@@ -171,11 +171,11 @@ export default function RCAHistoryPage() {
                   <input type="date" className="rca-field-input" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
                 </div>
                 <div className="rca-field-group">
-                  <label className="rca-field-label">Nama Requestor</label>
+                  <label className="rca-field-label">Nama Pelapor</label>
                   <input type="text" className="rca-field-input" placeholder="Cari nama" value={filterName} onChange={(e) => setFilterName(e.target.value)} />
                 </div>
                 <div className="rca-field-group">
-                  <label className="rca-field-label">NIP Requestor</label>
+                  <label className="rca-field-label">NIP Pelapor</label>
                   <input type="text" className="rca-field-input" placeholder="Cari NIP" value={filterNip} onChange={(e) => setFilterNip(e.target.value)} />
                 </div>
                 <div className="rca-field-group">
