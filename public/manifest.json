@@ -1,0 +1,21 @@
+{
+  "name": "App RCA",
+  "short_name": "RCA",
+  "description": "Aplikasi Laporan RCA - dokumentasi dan analisis akar masalah",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

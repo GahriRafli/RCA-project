@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
-  Mic, MicOff, Sparkles, Save, Clipboard, RefreshCw, Trash2, Plus, X, ListTodo, History, AlertTriangle, AlertCircle
+  Mic, MicOff, Sparkles, Save, Clipboard, RefreshCw, Trash2, Plus, X, ListTodo, AlertTriangle, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './rca.css';
@@ -22,11 +22,6 @@ export default function RCALaporanPage() {
   const [result, setResult] = useState(null);
   const [reportName, setReportName] = useState('');
   const [reportNip, setReportNip] = useState('');
-
-  // Riwayat Laporan
-  const [history, setHistory] = useState([]);
-  const [activeReportId, setActiveReportId] = useState(null);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Inisialisasi Web Speech API
   useEffect(() => {
@@ -104,25 +99,6 @@ export default function RCALaporanPage() {
     }
   };
 
-  // Muat riwayat laporan saat inisialisasi
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
-    setIsLoadingHistory(true);
-    try {
-      const res = await fetch('/api/rca/reports');
-      if (res.ok) {
-        const data = await res.json();
-        setHistory(data);
-      }
-    } catch (err) {
-      console.error('Gagal mengambil riwayat:', err);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
 
   // Analisis otomatis dengan AI
   const handleAnalyze = async () => {
@@ -206,6 +182,7 @@ export default function RCALaporanPage() {
   };
 
   // Simpan Laporan ke Database
+
   const handleSaveReport = async () => {
     if (!result) return;
     if (!reportName.trim() || !reportNip.trim()) {
@@ -215,11 +192,13 @@ export default function RCALaporanPage() {
 
     const payload = {
       ...result,
-      id: activeReportId || undefined,
       transcript,
       language,
       name: reportName.trim(),
       nip: reportNip.trim(),
+      created_by_user_id: null,
+      created_by_user_name: null,
+      created_by_role: null,
     };
 
     const loadingToast = toast.loading('Menyimpan laporan...');
@@ -238,62 +217,14 @@ export default function RCALaporanPage() {
       const savedReport = await res.json();
       toast.success('Laporan berhasil disimpan!', { id: loadingToast });
       
-      // Update local state
-      setActiveReportId(savedReport.id);
-      fetchHistory();
+      // Reset form setelah simpan
+      handleReset();
     } catch (err) {
       console.error(err);
       toast.error('Gagal menyimpan laporan.', { id: loadingToast });
     }
   };
 
-  // Hapus Laporan
-  const handleDeleteReport = async (id, e) => {
-    if (e) e.stopPropagation();
-
-    if (!confirm('Apakah Anda yakin ingin menghapus laporan ini?')) return;
-
-    const loadingToast = toast.loading('Menghapus laporan...');
-
-    try {
-      const res = await fetch(`/api/rca/reports/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        throw new Error('Gagal menghapus laporan');
-      }
-
-      toast.success('Laporan berhasil dihapus!', { id: loadingToast });
-      
-      if (activeReportId === id) {
-        handleReset();
-      }
-      
-      fetchHistory();
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal menghapus laporan.', { id: loadingToast });
-    }
-  };
-
-  // Membuka laporan lama dari riwayat
-  const handleLoadReport = (report) => {
-    setTranscript(report.transcript || '');
-    setLanguage(report.language || 'id');
-    setActiveReportId(report.id);
-    setResult({
-      judul: report.judul || '',
-      ringkasan: report.ringkasan || '',
-      root_cause: report.root_cause || '',
-      penyebab: report.penyebab || [],
-      tindakan: report.tindakan || [],
-    });
-    setReportName(report.name || '');
-    setReportNip(report.nip || '');
-    setError('');
-    toast.success('Laporan dimuat.');
-  };
 
   // Reset Form untuk membuat baru
   const handleReset = () => {
@@ -301,7 +232,6 @@ export default function RCALaporanPage() {
     setResult(null);
     setReportName('');
     setReportNip('');
-    setActiveReportId(null);
     setError('');
     toast.success('Form telah direset.');
   };
@@ -314,6 +244,7 @@ export default function RCALaporanPage() {
 
 *Nama Pelapor:* ${reportName || '-'}
 *NIP Pelapor:* ${reportNip || '-'}
+
 *Judul:* ${result.judul || '-'}
 *Ringkasan:* ${result.ringkasan || '-'}
 
@@ -630,53 +561,8 @@ _Dibuat otomatis via App RCA_`;
                 </div>
               )}
             </div>
-
-            {/* Riwayat Laporan */}
-            <div className="rca-history-card">
-              <div className="card-label">
-                <History size={14} />
-                Riwayat Laporan RCA
-              </div>
-
-              {isLoadingHistory ? (
-                <div className="rca-history-empty">Memuat riwayat...</div>
-              ) : history.length === 0 ? (
-                <div className="rca-history-empty">Belum ada laporan tersimpan</div>
-              ) : (
-                <div className="rca-history-list">
-                  {history.map((h) => (
-                    <button
-                      key={h.id}
-                      className={`rca-history-item ${activeReportId === h.id ? 'active' : ''}`}
-                      onClick={() => handleLoadReport(h)}
-                    >
-                      <div className="rca-history-info">
-                        <div className="rca-history-title">{h.judul}</div>
-                        <div className="rca-history-date">
-                          {new Date(h.created_at).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </div>
-                      <button
-                        className="rca-history-delete"
-                        onClick={(e) => handleDeleteReport(h.id, e)}
-                        title="Hapus Laporan"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
           </div>
-
+        
         </div>
       </main>
     </div>

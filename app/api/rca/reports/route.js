@@ -1,43 +1,22 @@
-import { getRedis } from '@/lib/redis';
-
-const LIST_KEY = 'rca:reports:list';
-const reportKey = (id) => `rca:report:${id}`;
+import { supabase } from '@/lib/db';
 
 export async function GET() {
   try {
-    const redis = getRedis();
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    // Get all report IDs from the sorted set (sorted by timestamp desc)
-    const ids = await redis.zrange(LIST_KEY, 0, -1, { rev: true });
-
-    if (!ids || ids.length === 0) {
-      return Response.json([]);
-    }
-
-    // Fetch all reports in parallel
-    const pipeline = redis.pipeline();
-    for (const id of ids) {
-      pipeline.get(reportKey(id));
-    }
-    const results = await pipeline.exec();
-
-    const reports = results
-      .filter(r => r !== null)
-      .map(r => (typeof r === 'string' ? JSON.parse(r) : r));
-
-    return Response.json(reports);
+    if (error) throw error;
+    return Response.json(data || []);
   } catch (err) {
-    console.error('RCA Reports GET Error:', err);
-    return Response.json(
-      { error: 'Gagal mengambil daftar laporan' },
-      { status: 500 }
-    );
+    console.error('RCA Reports GET Error (SQL):', err);
+    return Response.json({ error: 'Gagal mengambil daftar laporan' }, { status: 500 });
   }
 }
 
 export async function POST(request) {
   try {
-    const redis = getRedis();
     const body = await request.json();
 
     if (!body.name || !body.name.trim() || !body.nip || !body.nip.trim()) {
@@ -47,8 +26,8 @@ export async function POST(request) {
       );
     }
 
-    const id = body.id || crypto.randomUUID();
     const now = new Date().toISOString();
+    const id = body.id || crypto.randomUUID();
 
     const report = {
       id,
@@ -61,25 +40,22 @@ export async function POST(request) {
       tindakan: body.tindakan || [],
       transcript: body.transcript || '',
       language: body.language || 'id',
+      created_by_user_id: body.created_by_user_id || null,
+      created_by_user_name: body.created_by_user_name || null,
+      created_by_role: body.created_by_role || null,
+      updated_by_user_id: body.updated_by_user_id || null,
+      updated_by_user_name: body.updated_by_user_name || null,
+      updated_by_role: body.updated_by_role || null,
       created_at: body.created_at || now,
       updated_at: now,
     };
 
-    // Store the report and add to the sorted set index
-    const pipeline = redis.pipeline();
-    pipeline.set(reportKey(id), JSON.stringify(report));
-    pipeline.zadd(LIST_KEY, {
-      score: new Date(report.created_at).getTime(),
-      member: id,
-    });
-    await pipeline.exec();
+    const { data, error } = await supabase.from('reports').insert([report]).select();
+    if (error) throw error;
 
-    return Response.json(report, { status: 201 });
+    return Response.json(data?.[0] || report, { status: 201 });
   } catch (err) {
-    console.error('RCA Reports POST Error:', err);
-    return Response.json(
-      { error: 'Gagal menyimpan laporan' },
-      { status: 500 }
-    );
+    console.error('RCA Reports POST Error (SQL):', err);
+    return Response.json({ error: 'Gagal menyimpan laporan' }, { status: 500 });
   }
 }

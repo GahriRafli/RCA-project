@@ -1,6 +1,6 @@
 import './globals.css';
-import { AuthProvider } from '@/lib/auth';
 import { Toaster } from 'react-hot-toast';
+import PWARegister from './components/PWARegister';
 
 export const metadata = {
   title: 'App RCA — Laporan RCA',
@@ -10,23 +10,28 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="id">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#3b82f6" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body>
-        <AuthProvider>
-          {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: '#1A1A2E',
-                color: '#EAEAFF',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '10px',
-                fontSize: '0.85rem',
-                fontFamily: 'Inter, sans-serif',
-              },
-            }}
-          />
-        </AuthProvider>
+        {children}
+        <PWARegister />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#1A1A2E',
+              color: '#EAEAFF',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '10px',
+              fontSize: '0.85rem',
+              fontFamily: 'Inter, sans-serif',
+            },
+          }}
+        />
       </body>
     </html>
   );

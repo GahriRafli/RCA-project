@@ -2,29 +2,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
-import {
-  LogOut, Menu, X, Shield, Mic, AlertTriangle
-} from 'lucide-react';
+import { Menu, X, Mic, History } from 'lucide-react';
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  if (!user) return null;
-
   const navItems = [
     { label: 'Main', type: 'section' },
-    { href: '/rca', label: 'Laporan RCA', icon: Mic, roles: ['maker', 'checker', 'superadmin'] },
+    { href: '/rca', label: 'Buat RCA', icon: Mic },
+    { href: '/rca/history', label: 'Riwayat RCA', icon: History },
   ];
-
-  const filteredItems = navItems.filter(item => {
-    if (!item.roles) return true;
-    return item.roles.includes(user.role);
-  });
-
-  const initials = user.name?.split(' ').map(n => n[0]).join('').substring(0, 2) || '?';
 
   return (
     <>
@@ -62,12 +50,12 @@ export default function Sidebar() {
         </div>
 
         <nav className="sidebar-nav">
-          {filteredItems.map((item, i) => {
+          {navItems.map((item, i) => {
             if (item.type === 'section') {
               return <div key={i} className="nav-section-label">{item.label}</div>;
             }
             const Icon = item.icon;
-            const isActive = pathname === item.href || pathname?.startsWith(item.href);
+            const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
@@ -77,34 +65,10 @@ export default function Sidebar() {
               >
                 <Icon className="nav-icon" size={18} />
                 {item.label}
-                {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
               </Link>
             );
           })}
         </nav>
-
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-user-avatar">{initials}</div>
-            <div className="sidebar-user-info">
-              <div className="name">{user.name}</div>
-              <div className="role">
-                {user.role === 'superadmin' ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Shield size={10} /> Superadmin
-                  </span>
-                ) : user.role === 'checker' ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <AlertTriangle size={10} /> Checker
-                  </span>
-                ) : 'Maker'}
-              </div>
-            </div>
-            <button className="sidebar-logout" onClick={logout} title="Logout">
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* Mobile close btn style fix */}
