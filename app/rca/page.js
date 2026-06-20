@@ -139,18 +139,18 @@ export default function RCALaporanPage() {
         body: JSON.stringify({ transcript, language }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Gagal menganalisis data');
+        throw new Error(data.error || data.raw || `HTTP error! status: ${res.status}`);
       }
 
-      const data = await res.json();
       setResult(data);
       toast.success('Analisis selesai!');
     } catch (err) {
-      console.error(err);
+      console.error('Front-end Analyze Error:', err);
       setError(err.message || 'Terjadi kesalahan saat menganalisis transkrip.');
-      toast.error('Gagal menganalisis transkrip.');
+      toast.error(err.message || 'Gagal menganalisis transkrip.');
     } finally {
       setIsAnalyzing(false);
     }
