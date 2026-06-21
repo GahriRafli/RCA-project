@@ -22,6 +22,9 @@ export default function RCALaporanPage() {
   const [result, setResult] = useState(null);
   const [reportName, setReportName] = useState('');
   const [reportNip, setReportNip] = useState('');
+  const [users, setUsers] = useState([]);
+  const [userQuery, setUserQuery] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
   // Inisialisasi Web Speech API
   useEffect(() => {
@@ -196,9 +199,8 @@ export default function RCALaporanPage() {
       language,
       name: reportName.trim(),
       nip: reportNip.trim(),
-      created_by_user_id: null,
-      created_by_user_name: null,
-      created_by_role: null,
+      created_by_user_id: selectedUserId || null,
+      created_by_user_name: reportName.trim() || null,
     };
 
     const loadingToast = toast.loading('Menyimpan laporan...');
@@ -261,6 +263,32 @@ _Dibuat otomatis via App RCA_`;
     navigator.clipboard.writeText(template)
       .then(() => toast.success('Salin ke clipboard berhasil!'))
       .catch(() => toast.error('Gagal menyalin teks.'));
+  };
+
+  // Fetch users for dropdown
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/users')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!mounted) return;
+        if (Array.isArray(data)) setUsers(data);
+      })
+      .catch((e) => console.error('Failed to load users for dropdown', e));
+    return () => { mounted = false; };
+  }, []);
+
+  const filteredUsers = users.filter((u) => {
+    const q = userQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (u.name || '').toLowerCase().includes(q) || (u.nip || '').includes(q);
+  });
+
+  const chooseUser = (user) => {
+    setSelectedUserId(user.id);
+    setReportName(user.name || '');
+    setReportNip(user.nip || '');
+    setUserQuery('');
   };
 
   return (
@@ -355,29 +383,41 @@ _Dibuat otomatis via App RCA_`;
               <div className="rca-field-group">
                 <label className="rca-field-label">
                   <div className="field-indicator orange" />
-                  Nama Pelapor (wajib untuk simpan)
+                  Pilih Pelapor (cari nama atau NIP)
                 </label>
                 <input
                   type="text"
                   className="rca-field-input"
-                  value={reportName}
-                  onChange={(e) => setReportName(e.target.value)}
-                  placeholder="Nama lengkap"
+                  value={userQuery}
+                  onChange={(e) => setUserQuery(e.target.value)}
+                  placeholder="Ketik nama atau NIP untuk mencari..."
                 />
-              </div>
-
-              <div className="rca-field-group">
-                <label className="rca-field-label">
-                  <div className="field-indicator orange" />
-                  NIP Pelapor (wajib untuk simpan)
-                </label>
-                <input
-                  type="text"
-                  className="rca-field-input"
-                  value={reportNip}
-                  onChange={(e) => setReportNip(e.target.value.replace(/\D/g, ''))}
-                  placeholder="NIP hanya angka"
-                />
+                {userQuery.trim().length > 0 && filteredUsers.length > 0 && (
+                  <div className="rca-user-suggestions" style={{ border: '1px solid var(--border)', borderRadius: 8, marginTop: 8, background: 'var(--bg-card)', maxHeight: 220, overflow: 'auto' }}>
+                    {filteredUsers.map((u) => (
+                      <button key={u.id} type="button" onClick={() => chooseUser(u)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                        <div style={{ fontWeight: 700 }}>{u.name}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{u.nip}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input
+                    type="text"
+                    className="rca-field-input"
+                    value={reportName}
+                    onChange={(e) => { setReportName(e.target.value); setSelectedUserId(null); }}
+                    placeholder="Nama lengkap (atau pilih dari daftar)"
+                  />
+                  <input
+                    type="text"
+                    className="rca-field-input"
+                    value={reportNip}
+                    onChange={(e) => { setReportNip(e.target.value.replace(/\D/g, '')); setSelectedUserId(null); }}
+                    placeholder="NIP"
+                  />
+                </div>
               </div>
 
               {/* Tombol Analisis AI */}
@@ -389,7 +429,7 @@ _Dibuat otomatis via App RCA_`;
                 {isAnalyzing ? (
                   <>
                     <div className="spinner" />
-                    Menganalisis dengan Gemini AI...
+                    Menganalisis dengan AI...
                   </>
                 ) : (
                   <>

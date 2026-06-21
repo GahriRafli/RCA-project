@@ -20,22 +20,25 @@ async function callHuggingFace(prompt) {
   }
 
   const data = await res.json();
-
-  // Handle various response shapes
   if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
   if (data.generated_text) return data.generated_text;
   if (typeof data === 'string') return data;
-
-  // Some models return an object with 'error' or other fields
   if (data.error) throw new Error(`HuggingFace error: ${data.error}`);
 
-  // Fallback: try to stringify
   return JSON.stringify(data);
 }
 
 export async function POST(request) {
   try {
-    const { transcript, language } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      console.error('Invalid JSON body for /api/rca/analyze:', e);
+      return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { transcript, language } = body || {};
 
     if (!transcript || transcript.trim().length === 0) {
       return Response.json(
