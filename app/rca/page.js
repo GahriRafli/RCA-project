@@ -240,16 +240,16 @@ export default function RCALaporanPage() {
     toast.success('Form telah direset.');
   };
 
-  // Salin Teks Format WhatsApp/Email
-  const handleCopyToClipboard = () => {
-    if (!result) return;
+const handleCopyToClipboard = () => {
+  if (!result) return;
 
-    const template = `*LAPORAN ROOT CAUSE ANALYSIS (RCA)*
+  const template = `*LAPORAN ROOT CAUSE ANALYSIS (RCA)*
 
 *Nama Pelapor:* ${reportName || '-'}
 *NIP Pelapor:* ${reportNip || '-'}
 
 *Judul:* ${result.judul || '-'}
+
 *Ringkasan:* ${result.ringkasan || '-'}
 
 *Akar Masalah (Root Cause):*
@@ -259,13 +259,13 @@ ${result.root_cause || '-'}
 ${result.penyebab.length > 0 ? result.penyebab.map((p, i) => `${i + 1}. ${p}`).join('\n') : '-'}
 
 *Tindakan Penyelesaian:*
-${result.tindakan.length > 0 ? result.tindakan.map((t, i) => `${t.done ? '[x]' : '[ ]'} ${t.text}`).join('\n') : '-'}
+${result.tindakan.length > 0 ? result.tindakan.map((t) => `${t.done ? '[x]' : '[ ]'} ${t.text}`).join('\n') : '-'}
 
 _Dibuat otomatis via App RCA_`;
-    navigator.clipboard.writeText(template)
-      .then(() => toast.success('Salin ke clipboard berhasil!'))
-      .catch(() => toast.error('Gagal menyalin teks.'));
-  };
+  navigator.clipboard.writeText(template)
+    .then(() => toast.success('Salin ke clipboard berhasil!'))
+    .catch(() => toast.error('Gagal menyalin teks.'));
+};
 
 
   return (

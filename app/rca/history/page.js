@@ -141,31 +141,36 @@ export default function RCAHistoryPage() {
 
 
   const copySelectedReportText = async () => {
-    if (!selectedReport) return;
+  if (!selectedReport) return;
 
-    const template = `*LAPORAN RCA*
+  const template = `*LAPORAN ROOT CAUSE ANALYSIS (RCA)*
 
-Nama Pelapor: ${selectedReport.name || '-'}
-NIP Pelapor: ${selectedReport.nip || '-'}
-Judul: ${selectedReport.judul || '-'}
-Ringkasan: ${selectedReport.ringkasan || '-'}
-Root Cause: ${selectedReport.root_cause || '-'}
+*Nama Pelapor:* ${selectedReport.name || '-'}
+*NIP Pelapor:* ${selectedReport.nip || '-'}
 
-Faktor Penyebab:
-${(selectedReport.penyebab || []).map((p, i) => `${i + 1}. ${p}`).join('\n') || '-'}
+*Judul:* ${selectedReport.judul || '-'}
 
-Tindakan:
-${(selectedReport.tindakan || []).map((t, i) => `${i + 1}. ${t.done ? '[x]' : '[ ]'} ${t.text}`).join('\n') || '-'}
-`;
+*Ringkasan:* ${selectedReport.ringkasan || '-'}
 
-    try {
-      await navigator.clipboard.writeText(template);
-      toast.success('Teks laporan berhasil disalin.');
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal menyalin teks.');
-    }
-  };
+*Akar Masalah (Root Cause):*
+${selectedReport.root_cause || '-'}
+
+*Faktor Penyebab:*
+${(selectedReport.penyebab || []).length > 0 ? selectedReport.penyebab.map((p, i) => `${i + 1}. ${p}`).join('\n') : '-'}
+
+*Tindakan Penyelesaian:*
+${(selectedReport.tindakan || []).length > 0 ? selectedReport.tindakan.map((t) => `${t.done ? '[x]' : '[ ]'} ${t.text}`).join('\n') : '-'}
+
+_Dibuat otomatis via App RCA_`;
+
+  try {
+    await navigator.clipboard.writeText(template);
+    toast.success('Teks laporan berhasil disalin.');
+  } catch (err) {
+    console.error(err);
+    toast.error('Gagal menyalin teks.');
+  }
+};
 
   const handleDelete = async (id) => {
     if (!confirm('Hapus laporan ini secara permanen?')) return;
