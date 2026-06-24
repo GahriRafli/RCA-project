@@ -337,9 +337,13 @@ _Dibuat otomatis via App RCA_`;
                   <ul className="rca-issue-variasi-list">
                     {(activeIssue.variasi || []).length > 0
                       ? activeIssue.variasi.map((v, i) => {
-                          const matched = reports.find(
-                            (r) => r.root_cause && r.root_cause.trim() === v.trim()
-                          );
+                          const normalize = (s) => s?.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+                          const vNorm = normalize(v);
+                          const matched = reports.find((r) => {
+                            if (!r.root_cause) return false;
+                            const rNorm = normalize(r.root_cause);
+                            return rNorm === vNorm || rNorm.includes(vNorm) || vNorm.includes(rNorm);
+                          });
                           return (
                             <li
                               key={i}
@@ -352,7 +356,7 @@ _Dibuat otomatis via App RCA_`;
                                   detailPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                 }, 100);
                               }}
-                              title={matched ? `Buka laporan: ${matched.judul}` : 'Laporan tidak ditemukan'}
+                              title={matched ? `Buka laporan: ${matched.judul}` : undefined}
                             >
                               <span className="rca-issue-variasi-num">{i + 1}</span>
                               <span className="rca-issue-variasi-text">
