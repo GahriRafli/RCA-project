@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
   Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History, Clipboard,
-  TrendingUp, RotateCcw, Filter
+  TrendingUp, RotateCcw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '../../rca/rca.css';
@@ -311,17 +311,7 @@ _Dibuat otomatis via App RCA_`;
                     {issue.contoh_root_cause && (
                       <p className="rca-recurring-contoh">&ldquo;{issue.contoh_root_cause}&rdquo;</p>
                     )}
-                    <button
-                      className="rca-recurring-filter-btn"
-                      title="Filter laporan terkait tema ini"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const kata = issue.tema.split(' ').find(w => w.length > 3) || issue.tema.split(' ')[0];
-                        setFilterTitle(kata);
-                      }}
-                    >
-                      <Filter size={11} /> Lihat Laporan Terkait
-                    </button>
+                    <span className="rca-recurring-click-hint">Klik untuk detail →</span>
                   </div>
                 ))}
               </div>
@@ -342,28 +332,41 @@ _Dibuat otomatis via App RCA_`;
                     </button>
                   </div>
                   <p className="rca-issue-modal-sub">Berikut variasi root cause yang termasuk dalam kelompok isu ini:</p>
+                  <p className="rca-issue-modal-hint">Klik item untuk melihat detail laporan terkait.</p>
                   <ul className="rca-issue-variasi-list">
                     {(activeIssue.variasi || []).length > 0
-                      ? activeIssue.variasi.map((v, i) => (
-                          <li key={i} className="rca-issue-variasi-item">
-                            <span className="rca-issue-variasi-num">{i + 1}</span>
-                            <span>{v}</span>
-                          </li>
-                        ))
+                      ? activeIssue.variasi.map((v, i) => {
+                          const matched = reports.find(
+                            (r) => r.root_cause && r.root_cause.trim() === v.trim()
+                          );
+                          return (
+                            <li
+                              key={i}
+                              className={`rca-issue-variasi-item${matched ? ' clickable' : ''}`}
+                              onClick={() => {
+                                if (!matched) return;
+                                selectReport(matched);
+                                setActiveIssue(null);
+                              }}
+                              title={matched ? `Buka laporan: ${matched.judul}` : 'Laporan tidak ditemukan'}
+                            >
+                              <span className="rca-issue-variasi-num">{i + 1}</span>
+                              <span className="rca-issue-variasi-text">
+                                {v}
+                                {matched && (
+                                  <span className="rca-issue-variasi-judul">
+                                    📄 {matched.judul}
+                                  </span>
+                                )}
+                              </span>
+                              {matched && <Edit3 size={13} className="rca-issue-variasi-arrow" />}
+                            </li>
+                          );
+                        })
                       : <li className="rca-issue-variasi-item"><span>Tidak ada variasi tersedia.</span></li>
                     }
                   </ul>
                   <div className="rca-issue-modal-footer">
-                    <button
-                      className="rca-btn rca-btn-copy"
-                      onClick={() => {
-                        const kata = activeIssue.tema.split(' ').find(w => w.length > 3) || activeIssue.tema.split(' ')[0];
-                        setFilterTitle(kata);
-                        setActiveIssue(null);
-                      }}
-                    >
-                      <Filter size={13} /> Filter Laporan Terkait
-                    </button>
                     <button className="rca-btn rca-btn-new" onClick={() => setActiveIssue(null)}>
                       <X size={13} /> Tutup
                     </button>

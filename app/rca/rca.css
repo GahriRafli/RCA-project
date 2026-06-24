@@ -1109,27 +1109,17 @@ textarea.rca-field-input {
   overflow: hidden;
 }
 
-.rca-recurring-filter-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.rca-recurring-click-hint {
   margin-top: auto;
-  padding: 5px 10px;
-  font-size: 0.72rem;
-  font-weight: 500;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #E2E8F0);
-  background: transparent;
-  color: var(--text-muted, #64748B);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  align-self: flex-start;
+  font-size: 0.7rem;
+  color: var(--text-muted, #94A3B8);
+  align-self: flex-end;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
-.rca-recurring-filter-btn:hover {
-  background: rgba(249, 115, 22, 0.07);
-  color: #F97316;
-  border-color: rgba(249, 115, 22, 0.4);
+.rca-recurring-card:hover .rca-recurring-click-hint {
+  opacity: 1;
 }
 
 /* Clickable card cursor & active state */
@@ -1227,7 +1217,16 @@ textarea.rca-field-input {
   font-size: 0.82rem;
   color: var(--text-muted, #94A3B8);
   margin: 0;
-  padding: 12px 20px 8px;
+  padding: 12px 20px 4px;
+  flex-shrink: 0;
+}
+
+.rca-issue-modal-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted, #94A3B8);
+  margin: 0;
+  padding: 0 20px 8px;
+  font-style: italic;
   flex-shrink: 0;
 }
 
@@ -1253,6 +1252,41 @@ textarea.rca-field-input {
   font-size: 0.84rem;
   color: var(--text-primary);
   line-height: 1.5;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.rca-issue-variasi-item.clickable {
+  cursor: pointer;
+}
+
+.rca-issue-variasi-item.clickable:hover {
+  background: rgba(249, 115, 22, 0.06);
+  border-color: rgba(249, 115, 22, 0.35);
+}
+
+.rca-issue-variasi-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rca-issue-variasi-judul {
+  font-size: 0.73rem;
+  color: #F97316;
+  font-weight: 500;
+}
+
+.rca-issue-variasi-arrow {
+  flex-shrink: 0;
+  color: var(--text-muted, #94A3B8);
+  margin-top: 3px;
+  transition: color 0.15s;
+}
+
+.rca-issue-variasi-item.clickable:hover .rca-issue-variasi-arrow {
+  color: #F97316;
 }
 
 .rca-issue-variasi-num {
