@@ -23,6 +23,7 @@ export default function RCAHistoryPage() {
   const [recurringLoading, setRecurringLoading] = useState(false);
   const [recurringError, setRecurringError] = useState('');
   const [recurringMessage, setRecurringMessage] = useState('');
+  const [activeIssue, setActiveIssue] = useState(null); // modal detail
 
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -294,7 +295,15 @@ _Dibuat otomatis via App RCA_`;
             {!recurringLoading && !recurringError && recurringIssues.length > 0 && (
               <div className="rca-recurring-grid">
                 {recurringIssues.map((issue, idx) => (
-                  <div key={idx} className="rca-recurring-card">
+                  <div
+                    key={idx}
+                    className={`rca-recurring-card${activeIssue?.tema === issue.tema ? ' active' : ''}`}
+                    onClick={() => setActiveIssue(activeIssue?.tema === issue.tema ? null : issue)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setActiveIssue(activeIssue?.tema === issue.tema ? null : issue)}
+                    title="Klik untuk melihat detail isu"
+                  >
                     <div className="rca-recurring-card-top">
                       <span className="rca-recurring-tema">{issue.tema}</span>
                       <span className="rca-recurring-badge">{issue.jumlah}x</span>
@@ -305,8 +314,8 @@ _Dibuat otomatis via App RCA_`;
                     <button
                       className="rca-recurring-filter-btn"
                       title="Filter laporan terkait tema ini"
-                      onClick={() => {
-                        // Ambil kata kunci pertama dari tema (non-stopword)
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const kata = issue.tema.split(' ').find(w => w.length > 3) || issue.tema.split(' ')[0];
                         setFilterTitle(kata);
                       }}
@@ -315,6 +324,51 @@ _Dibuat otomatis via App RCA_`;
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Modal detail issue */}
+            {activeIssue && (
+              <div className="rca-issue-modal-overlay" onClick={() => setActiveIssue(null)}>
+                <div className="rca-issue-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="rca-issue-modal-header">
+                    <div className="rca-issue-modal-title">
+                      <TrendingUp size={16} />
+                      <span>{activeIssue.tema}</span>
+                      <span className="rca-recurring-badge">{activeIssue.jumlah}x muncul</span>
+                    </div>
+                    <button className="rca-issue-modal-close" onClick={() => setActiveIssue(null)}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <p className="rca-issue-modal-sub">Berikut variasi root cause yang termasuk dalam kelompok isu ini:</p>
+                  <ul className="rca-issue-variasi-list">
+                    {(activeIssue.variasi || []).length > 0
+                      ? activeIssue.variasi.map((v, i) => (
+                          <li key={i} className="rca-issue-variasi-item">
+                            <span className="rca-issue-variasi-num">{i + 1}</span>
+                            <span>{v}</span>
+                          </li>
+                        ))
+                      : <li className="rca-issue-variasi-item"><span>Tidak ada variasi tersedia.</span></li>
+                    }
+                  </ul>
+                  <div className="rca-issue-modal-footer">
+                    <button
+                      className="rca-btn rca-btn-copy"
+                      onClick={() => {
+                        const kata = activeIssue.tema.split(' ').find(w => w.length > 3) || activeIssue.tema.split(' ')[0];
+                        setFilterTitle(kata);
+                        setActiveIssue(null);
+                      }}
+                    >
+                      <Filter size={13} /> Filter Laporan Terkait
+                    </button>
+                    <button className="rca-btn rca-btn-new" onClick={() => setActiveIssue(null)}>
+                      <X size={13} /> Tutup
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
