@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
-  Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History, Clipboard
+  Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History, Clipboard,
+  TrendingUp, RotateCcw, Filter
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '../../rca/rca.css';
@@ -17,6 +18,12 @@ export default function RCAHistoryPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [showOriginal, setShowOriginal] = useState(false); // Fitur 4
 
+  // Recurring Issues state
+  const [recurringIssues, setRecurringIssues] = useState([]);
+  const [recurringLoading, setRecurringLoading] = useState(false);
+  const [recurringError, setRecurringError] = useState('');
+  const [recurringMessage, setRecurringMessage] = useState('');
+
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [filterName, setFilterName] = useState('');
@@ -25,7 +32,26 @@ export default function RCAHistoryPage() {
 
   useEffect(() => {
     fetchReports();
+    fetchRecurringIssues();
   }, []);
+
+  const fetchRecurringIssues = async () => {
+    setRecurringLoading(true);
+    setRecurringError('');
+    setRecurringMessage('');
+    try {
+      const res = await fetch('/api/rca/recurring-issues');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal memuat recurring issues');
+      setRecurringIssues(data.top_issues || []);
+      if (data.message) setRecurringMessage(data.message);
+    } catch (err) {
+      console.error(err);
+      setRecurringError(err.message || 'Gagal memuat recurring issues.');
+    } finally {
+      setRecurringLoading(false);
+    }
+  };
 
   const fetchReports = async () => {
     setIsLoading(true);
@@ -209,6 +235,88 @@ _Dibuat otomatis via App RCA_`;
               </h2>
               <p>Filter dan kelola laporan RCA Anda di halaman ini.</p>
             </div>
+          </div>
+
+          {/* ── Recurring Issues Section ── */}
+          <div className="rca-recurring-section">
+            <div className="rca-recurring-header">
+              <div className="rca-recurring-title">
+                <TrendingUp size={18} />
+                <div>
+                  <span>Recurring Issues</span>
+                  <p>Top 5 isu yang paling sering muncul dari seluruh laporan</p>
+                </div>
+              </div>
+              <button
+                className="rca-btn rca-btn-refresh rca-recurring-refresh"
+                onClick={fetchRecurringIssues}
+                disabled={recurringLoading}
+                title="Refresh recurring issues"
+              >
+                <RotateCcw size={13} className={recurringLoading ? 'spin-icon' : ''} />
+                Refresh
+              </button>
+            </div>
+
+            {/* Loading skeleton */}
+            {recurringLoading && (
+              <div className="rca-recurring-grid">
+                {[1,2,3,4,5].map((i) => (
+                  <div key={i} className="rca-recurring-card skeleton">
+                    <div className="skeleton-bar wide" />
+                    <div className="skeleton-bar narrow" />
+                    <div className="skeleton-bar medium" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error state */}
+            {!recurringLoading && recurringError && (
+              <div className="rca-recurring-empty">
+                <AlertTriangle size={16} />
+                <span>{recurringError}</span>
+                <button className="rca-btn rca-btn-refresh" onClick={fetchRecurringIssues}>
+                  <RotateCcw size={13} /> Coba lagi
+                </button>
+              </div>
+            )}
+
+            {/* Empty / belum cukup data */}
+            {!recurringLoading && !recurringError && recurringIssues.length === 0 && (
+              <div className="rca-recurring-empty">
+                <TrendingUp size={16} />
+                <span>{recurringMessage || 'Belum cukup laporan untuk menampilkan recurring issues. Tambahkan minimal 3 laporan terlebih dahulu.'}</span>
+              </div>
+            )}
+
+            {/* Data cards */}
+            {!recurringLoading && !recurringError && recurringIssues.length > 0 && (
+              <div className="rca-recurring-grid">
+                {recurringIssues.map((issue, idx) => (
+                  <div key={idx} className="rca-recurring-card">
+                    <div className="rca-recurring-card-top">
+                      <span className="rca-recurring-tema">{issue.tema}</span>
+                      <span className="rca-recurring-badge">{issue.jumlah}x</span>
+                    </div>
+                    {issue.contoh_root_cause && (
+                      <p className="rca-recurring-contoh">&ldquo;{issue.contoh_root_cause}&rdquo;</p>
+                    )}
+                    <button
+                      className="rca-recurring-filter-btn"
+                      title="Filter laporan terkait tema ini"
+                      onClick={() => {
+                        // Ambil kata kunci pertama dari tema (non-stopword)
+                        const kata = issue.tema.split(' ').find(w => w.length > 3) || issue.tema.split(' ')[0];
+                        setFilterTitle(kata);
+                      }}
+                    >
+                      <Filter size={11} /> Lihat Laporan Terkait
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="rca-history-grid">
