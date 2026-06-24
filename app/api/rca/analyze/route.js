@@ -1,33 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/db';
-
-async function callHuggingFace(prompt) {
-  const hfToken = process.env.HUGGINGFACE_API_TOKEN;
-  if (!hfToken) throw new Error('HUGGINGFACE_API_TOKEN tidak dikonfigurasi');
-
-  const modelName = process.env.HF_MODEL || 'google/flan-t5-large';
-  const res = await fetch(`https://api-inference.huggingface.co/models/${modelName}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${hfToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: 512 } }),
-  });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
-  }
-
-  const data = await res.json();
-  if (Array.isArray(data) && data[0] && data[0].generated_text) return data[0].generated_text;
-  if (data.generated_text) return data.generated_text;
-  if (typeof data === 'string') return data;
-  if (data.error) throw new Error(`HuggingFace error: ${data.error}`);
-
-  return JSON.stringify(data);
-}
 
 // Fitur 2: Ambil 20 laporan terakhir sebagai knowledge internal
 // Tidak mengambil name/nip/transcript untuk menjaga privasi & hemat token
@@ -77,16 +48,13 @@ export async function POST(request) {
     const { transcript, language } = body || {};
 
     if (!transcript || transcript.trim().length === 0) {
-      return Response.json(
-        { error: 'Transkrip tidak boleh kosong' },
-        { status: 400 }
-      );
+      return Response.json({ error: 'Transkrip tidak boleh kosong' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_TOKEN;
+    if (!hfToken) {
       return Response.json(
-        { error: 'GEMINI_API_KEY belum dikonfigurasi di server' },
+        { error: 'HF_TOKEN belum dikonfigurasi di server' },
         { status: 500 }
       );
     }
@@ -98,9 +66,6 @@ export async function POST(request) {
 ${knowledgeContext}
 Gunakan pola solusi di atas sebagai referensi saat menyusun rekomendasi untuk insiden baru ini. Tandai rekomendasi dari basis ini dengan sumber "internal".\n`
       : '';
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const lang = language === 'en' ? 'English' : 'Bahasa Indonesia';
 
@@ -136,25 +101,41 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
   ]
 }`;
 
-    let responseText;
-    try {
-      const result = await model.generateContent(prompt);
-      responseText = result.response.text();
-    } catch (gErr) {
-      console.error('Google Generative AI error:', gErr);
-      try {
-        responseText = await callHuggingFace(prompt);
-      } catch (hfErr) {
-        console.error('HuggingFace fallback error:', hfErr);
-        throw new Error(gErr.message || gErr);
-      }
+    const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/Llama-3.3-70B-Instruct',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 2048,
+        temperature: 0.2,
+      }),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
     }
 
-    // Clean response — remove markdown code blocks if present
+    const hfData = await res.json();
+    let responseText = hfData?.choices?.[0]?.message?.content || '';
+
+    if (!responseText.trim()) {
+      throw new Error('HuggingFace tidak mengembalikan konten');
+    }
+
+    // Bersihkan markdown code block jika ada
     let cleaned = responseText.trim();
     if (cleaned.startsWith('```')) {
       cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
     }
+
+    // Ekstrak JSON jika ada teks sebelum/sesudah kurung kurawal
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch) cleaned = jsonMatch[0];
 
     let analysis;
     try {
@@ -166,7 +147,7 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
       );
     }
 
-    // Validate and normalize — field lama tetap seperti semula, rekomendasi sebagai tambahan
+    // Validasi dan normalisasi — field lama tetap identik, rekomendasi sebagai tambahan
     const normalized = {
       judul: typeof analysis.judul === 'string' ? analysis.judul : '',
       ringkasan: typeof analysis.ringkasan === 'string' ? analysis.ringkasan : '',
