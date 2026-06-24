@@ -711,7 +711,8 @@ textarea.rca-field-input {
 /* Explicit 3-column layout for history: Filters | List | Detail */
 .rca-history-grid {
   display: grid;
-  grid-template-columns: clamp(280px, 22%, 360px) 1fr clamp(320px, 30%, 420px);
+  grid-column: 1 / -1; /* span full width inside rca-container 2-col grid */
+  grid-template-columns: 280px 1fr 380px;
   gap: var(--space-lg);
   width: 100%;
   align-items: start;
@@ -719,12 +720,35 @@ textarea.rca-field-input {
 
 .rca-history-grid .rca-history-card {
   width: 100%;
+  min-width: 0; /* prevent overflow in grid cell */
 }
 
-@media (max-width: 1160px) {
+@media (max-width: 1200px) {
+  .rca-history-grid {
+    grid-template-columns: 260px 1fr 340px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .rca-history-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  /* Filter card spans full width on medium screens */
+  .rca-history-grid > .rca-history-card:first-child {
+    grid-column: 1 / -1;
+  }
+
+  /* Detail card spans full width on medium screens */
+  .rca-history-grid > .rca-history-card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
   .rca-history-grid {
     grid-template-columns: 1fr;
-    gap: var(--space-md);
   }
 }
 
