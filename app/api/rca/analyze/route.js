@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { supabase } from '@/lib/db';
 
 async function callHuggingFace(prompt) {
   const hfToken = process.env.HUGGINGFACE_API_TOKEN;
@@ -28,6 +29,41 @@ async function callHuggingFace(prompt) {
   return JSON.stringify(data);
 }
 
+// Fitur 2: Ambil 20 laporan terakhir sebagai knowledge internal
+// Tidak mengambil name/nip/transcript untuk menjaga privasi & hemat token
+async function fetchKnowledgeContext() {
+  try {
+    const { data, error } = await supabase
+      .from('reports')
+      .select('judul, root_cause, penyebab, tindakan')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error || !data || data.length === 0) return '';
+
+    const MAX_KNOWLEDGE_CHARS = 4000;
+    let knowledgeBlock = '';
+
+    for (const report of data) {
+      const tindakanList = Array.isArray(report.tindakan)
+        ? report.tindakan.map((t) => (typeof t === 'object' ? t.text : t)).filter(Boolean).slice(0, 5).join('; ')
+        : '';
+      const penyebabList = Array.isArray(report.penyebab)
+        ? report.penyebab.slice(0, 3).join('; ')
+        : '';
+
+      const entry = `- Judul: ${report.judul || '-'} | Root Cause: ${report.root_cause || '-'} | Penyebab: ${penyebabList || '-'} | Solusi: ${tindakanList || '-'}\n`;
+
+      if (knowledgeBlock.length + entry.length > MAX_KNOWLEDGE_CHARS) break;
+      knowledgeBlock += entry;
+    }
+
+    return knowledgeBlock;
+  } catch {
+    return '';
+  }
+}
+
 export async function POST(request) {
   try {
     let body;
@@ -55,6 +91,14 @@ export async function POST(request) {
       );
     }
 
+    // Fitur 2: Ambil knowledge dari laporan sebelumnya
+    const knowledgeContext = await fetchKnowledgeContext();
+    const knowledgeSection = knowledgeContext
+      ? `\nBASIS PENGETAHUAN INSIDEN SEBELUMNYA (dari laporan RCA yang pernah dibuat di organisasi ini):
+${knowledgeContext}
+Gunakan pola solusi di atas sebagai referensi saat menyusun rekomendasi untuk insiden baru ini. Tandai rekomendasi dari basis ini dengan sumber "internal".\n`
+      : '';
+
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
@@ -63,10 +107,12 @@ export async function POST(request) {
     const prompt = `Kamu adalah analis RCA (Root Cause Analysis) profesional di bidang IT Operations.
 
 Tugas: Analisis transkrip laporan masalah berikut dan hasilkan laporan RCA terstruktur dalam ${lang}.
-
+${knowledgeSection}
 ATURAN PENTING:
-- HANYA gunakan informasi yang ADA di transkrip. JANGAN mengarang atau menambahkan informasi yang tidak disebutkan.
+- HANYA gunakan informasi yang ADA di transkrip untuk field judul, ringkasan, root_cause, penyebab, dan tindakan. JANGAN mengarang atau menambahkan informasi yang tidak disebutkan.
 - Jika suatu informasi tidak tersedia di transkrip, kosongkan field tersebut (string kosong atau array kosong).
+- Untuk field "rekomendasi": boleh menggunakan pola dari basis pengetahuan internal (tandai sumber "internal") dan/atau best practice industri yang relevan (tandai sumber "industri"). Jika tidak ada rekomendasi yang relevan, kembalikan array kosong.
+- JANGAN mengarang rekomendasi yang tidak relevan dengan insiden.
 - Jawab HANYA dalam format JSON yang valid, tanpa teks tambahan apapun di luar JSON.
 
 Transkrip:
@@ -83,6 +129,10 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
   "tindakan": [
     {"text": "Langkah tindakan penyelesaian 1", "done": false},
     {"text": "Langkah tindakan penyelesaian 2", "done": false}
+  ],
+  "rekomendasi": [
+    {"isi": "Teks rekomendasi konkret dari pola laporan sebelumnya", "sumber": "internal"},
+    {"isi": "Teks rekomendasi best practice industri", "sumber": "industri"}
   ]
 }`;
 
@@ -92,12 +142,10 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
       responseText = result.response.text();
     } catch (gErr) {
       console.error('Google Generative AI error:', gErr);
-      // Fallback to Hugging Face if token is available
       try {
         responseText = await callHuggingFace(prompt);
       } catch (hfErr) {
         console.error('HuggingFace fallback error:', hfErr);
-        // rethrow original Google error if no HF or HF also failed
         throw new Error(gErr.message || gErr);
       }
     }
@@ -118,7 +166,7 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
       );
     }
 
-    // Validate and normalize the structure
+    // Validate and normalize — field lama tetap seperti semula, rekomendasi sebagai tambahan
     const normalized = {
       judul: typeof analysis.judul === 'string' ? analysis.judul : '',
       ringkasan: typeof analysis.ringkasan === 'string' ? analysis.ringkasan : '',
@@ -130,6 +178,15 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
         ? analysis.tindakan
             .filter(t => t && typeof t.text === 'string')
             .map(t => ({ text: t.text, done: Boolean(t.done) }))
+        : [],
+      // Fitur 3: field rekomendasi baru
+      rekomendasi: Array.isArray(analysis.rekomendasi)
+        ? analysis.rekomendasi
+            .filter(r => r && typeof r.isi === 'string' && r.isi.trim())
+            .map(r => ({
+              isi: r.isi.trim(),
+              sumber: r.sumber === 'internal' ? 'internal' : 'industri',
+            }))
         : [],
     };
 

@@ -967,6 +967,225 @@ textarea.rca-field-input {
 }
 
 /* ===== RESPONSIVE ===== */
+/* ── Fitur 1: Enhance Badge & Undo Button ─────────────────── */
+.rca-enhance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.rca-enhance-badge.loading {
+  background: rgba(249, 115, 22, 0.1);
+  color: var(--rca-orange, #F97316);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.rca-enhance-badge.done {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.spinner-xs {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(249, 115, 22, 0.3);
+  border-top-color: #F97316;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.rca-undo-enhance-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-color, #E2E8F0);
+  background: transparent;
+  color: var(--text-muted, #94A3B8);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.rca-undo-enhance-btn:hover {
+  color: #F97316;
+  border-color: #F97316;
+}
+
+.rca-transcript.enhancing {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ── Fitur 3: Rekomendasi AI Panel ────────────────────────── */
+.rca-rekomendasi-panel {
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(249, 115, 22, 0.03);
+}
+
+.rca-rekomendasi-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(249, 115, 22, 0.08);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #F97316;
+  border-bottom: 1px solid rgba(249, 115, 22, 0.15);
+}
+
+.rca-rekomendasi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.rca-rekomendasi-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.rca-rekomendasi-item:last-child {
+  border-bottom: none;
+}
+
+.rca-rekomendasi-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rca-rekomendasi-text {
+  font-size: 0.84rem;
+  color: var(--text-primary, #1E293B);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.rca-sumber-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  width: fit-content;
+}
+
+.rca-sumber-badge.internal {
+  background: rgba(79, 70, 229, 0.1);
+  color: #4F46E5;
+  border: 1px solid rgba(79, 70, 229, 0.25);
+}
+
+.rca-sumber-badge.industri {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0EA5E9;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.rca-rekomendasi-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rca-rek-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #E2E8F0);
+  background: var(--bg-primary, #fff);
+  color: var(--text-muted, #64748B);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.rca-rek-btn:hover {
+  background: var(--bg-secondary, #F8FAFC);
+  color: var(--text-primary, #1E293B);
+  border-color: var(--text-muted, #94A3B8);
+}
+
+.rca-rek-btn.add {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10B981;
+}
+
+.rca-rek-btn.add:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: #10B981;
+  color: #059669;
+}
+
+/* ── Fitur 4: Transkrip Asli (History) ────────────────────── */
+.rca-original-toggle {
+  width: 100%;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-color, #E2E8F0);
+  background: transparent;
+  color: var(--text-muted, #94A3B8);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  margin-bottom: 0;
+}
+
+.rca-original-toggle:hover {
+  color: #F97316;
+  border-color: rgba(249, 115, 22, 0.5);
+  background: rgba(249, 115, 22, 0.03);
+}
+
+.rca-original-box {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg-secondary, #F8FAFC);
+  border: 1px solid var(--border-color, #E2E8F0);
+  font-size: 0.83rem;
+  color: var(--text-secondary, #475569);
+  line-height: 1.6;
+}
+
+.rca-original-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #94A3B8);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 @media (max-width: 1024px) {
   .rca-container {
     grid-template-columns: 1fr;

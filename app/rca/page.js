@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
-  Mic, MicOff, Sparkles, Save, Clipboard, RefreshCw, Trash2, Plus, X, ListTodo, AlertTriangle, AlertCircle
+  Mic, MicOff, Sparkles, Save, Clipboard, RefreshCw, Trash2, Plus, X,
+  ListTodo, AlertTriangle, AlertCircle, Lightbulb, Copy, Undo2, CheckCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './rca.css';
@@ -11,10 +12,17 @@ import './rca.css';
 export default function RCALaporanPage() {
   // Transkrip & State Perekaman
   const [transcript, setTranscript] = useState('');
+  const [originalTranscript, setOriginalTranscript] = useState(''); // Fitur 4
   const [isRecording, setIsRecording] = useState(false);
   const [language, setLanguage] = useState('id');
   const [recognitionSupported, setRecognitionSupported] = useState(true);
   const recognitionRef = useRef(null);
+
+  // Fitur 1: Auto-enhance state
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhanceDone, setEnhanceDone] = useState(false); // badge "teks dirapikan"
+  const [hasBeenEnhanced, setHasBeenEnhanced] = useState(false); // apakah sudah pernah di-enhance
+  const enhanceTimerRef = useRef(null);
 
   // Status & Hasil Analisis AI
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -37,17 +45,12 @@ export default function RCALaporanPage() {
     rec.lang = language === 'id' ? 'id-ID' : 'en-US';
 
     rec.onresult = (event) => {
-      let interimTranscript = '';
       let finalTranscript = '';
-
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
           finalTranscript += event.results[i][0].transcript + ' ';
-        } else {
-          interimTranscript += event.results[i][0].transcript;
         }
       }
-
       if (finalTranscript) {
         setTranscript(prev => prev + finalTranscript);
       }
@@ -63,10 +66,66 @@ export default function RCALaporanPage() {
 
     rec.onend = () => {
       setIsRecording(false);
+      // Fitur 1: auto-enhance saat rekaman berhenti
+      setTranscript(prev => {
+        if (prev.trim()) triggerEnhance(prev);
+        return prev;
+      });
     };
 
     recognitionRef.current = rec;
-  }, [language]);
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fitur 1: fungsi enhance
+  const triggerEnhance = useCallback(async (text) => {
+    if (!text || !text.trim() || isEnhancing) return;
+    setIsEnhancing(true);
+    setEnhanceDone(false);
+    try {
+      const res = await fetch('/api/rca/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: text, language }),
+      });
+      if (!res.ok) throw new Error('Enhance gagal');
+      const data = await res.json();
+      if (data.enhanced && data.enhanced !== text) {
+        setOriginalTranscript(text); // simpan versi asli sebelum diganti
+        setTranscript(data.enhanced);
+        setHasBeenEnhanced(true);
+        setEnhanceDone(true);
+        setTimeout(() => setEnhanceDone(false), 4000); // badge hilang setelah 4 detik
+      }
+    } catch {
+      // silent fail — jangan blokir user
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, [language, isEnhancing]);
+
+  // Fitur 1: debounce enhance saat user berhenti mengetik (2 detik)
+  const handleTranscriptChange = (e) => {
+    const val = e.target.value;
+    setTranscript(val);
+    setHasBeenEnhanced(false); // reset jika user mengedit manual
+
+    if (enhanceTimerRef.current) clearTimeout(enhanceTimerRef.current);
+    if (val.trim().length > 30) { // minimal 30 karakter agar worth di-enhance
+      enhanceTimerRef.current = setTimeout(() => {
+        triggerEnhance(val);
+      }, 2000);
+    }
+  };
+
+  // Fitur 1: urungkan perapian
+  const handleUndoEnhance = () => {
+    if (originalTranscript) {
+      setTranscript(originalTranscript);
+      setOriginalTranscript('');
+      setHasBeenEnhanced(false);
+      toast('Perapian diurungkan.', { icon: '↩️' });
+    }
+  };
 
   // Update bahasa recording secara dinamis
   const changeLanguage = (lang) => {
@@ -98,7 +157,6 @@ export default function RCALaporanPage() {
       }
     }
   };
-
 
   // Analisis otomatis dengan AI
   const handleAnalyze = async () => {
@@ -142,10 +200,7 @@ export default function RCALaporanPage() {
 
   // Penanganan Edit Hasil RCA secara Manual
   const handleFieldChange = (field, value) => {
-    setResult(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setResult(prev => ({ ...prev, [field]: value }));
   };
 
   const handleArrayChange = (field, index, value) => {
@@ -186,8 +241,16 @@ export default function RCALaporanPage() {
     });
   };
 
-  // Simpan Laporan ke Database
+  // Fitur 3: tambahkan rekomendasi ke daftar tindakan
+  const addRekomendasiAsTindakan = (isiTeks) => {
+    setResult(prev => ({
+      ...prev,
+      tindakan: [...(prev.tindakan || []), { text: isiTeks, done: false }]
+    }));
+    toast.success('Rekomendasi ditambahkan ke Tindakan.');
+  };
 
+  // Simpan Laporan ke Database
   const handleSaveReport = async () => {
     if (!result) return;
     if (!reportName.trim() || !reportNip.trim()) {
@@ -195,9 +258,13 @@ export default function RCALaporanPage() {
       return;
     }
 
+    // Fitur 4: kirim original_transcript bersama transcript
+    const effectiveOriginal = hasBeenEnhanced && originalTranscript ? originalTranscript : transcript;
+
     const payload = {
       ...result,
       transcript,
+      original_transcript: effectiveOriginal !== transcript ? effectiveOriginal : null,
       language,
       name: reportName.trim(),
       nip: reportNip.trim(),
@@ -214,14 +281,9 @@ export default function RCALaporanPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        throw new Error('Gagal menyimpan laporan');
-      }
+      if (!res.ok) throw new Error('Gagal menyimpan laporan');
 
-      const savedReport = await res.json();
       toast.success('Laporan berhasil disimpan!', { id: loadingToast });
-      
-      // Reset form setelah simpan
       handleReset();
     } catch (err) {
       console.error(err);
@@ -229,10 +291,12 @@ export default function RCALaporanPage() {
     }
   };
 
-
-  // Reset Form untuk membuat baru
+  // Reset Form
   const handleReset = () => {
     setTranscript('');
+    setOriginalTranscript('');
+    setHasBeenEnhanced(false);
+    setEnhanceDone(false);
     setResult(null);
     setReportName('');
     setReportNip('');
@@ -240,10 +304,10 @@ export default function RCALaporanPage() {
     toast.success('Form telah direset.');
   };
 
-const handleCopyToClipboard = () => {
-  if (!result) return;
+  const handleCopyToClipboard = () => {
+    if (!result) return;
 
-  const template = `*LAPORAN ROOT CAUSE ANALYSIS (RCA)*
+    const template = `*LAPORAN ROOT CAUSE ANALYSIS (RCA)*
 
 *Nama Pelapor:* ${reportName || '-'}
 *NIP Pelapor:* ${reportNip || '-'}
@@ -262,18 +326,17 @@ ${result.penyebab.length > 0 ? result.penyebab.map((p, i) => `${i + 1}. ${p}`).j
 ${result.tindakan.length > 0 ? result.tindakan.map((t) => `${t.done ? '[x]' : '[ ]'} ${t.text}`).join('\n') : '-'}
 
 _Dibuat otomatis via App RCA_`;
-  navigator.clipboard.writeText(template)
-    .then(() => toast.success('Salin ke clipboard berhasil!'))
-    .catch(() => toast.error('Gagal menyalin teks.'));
-};
-
+    navigator.clipboard.writeText(template)
+      .then(() => toast.success('Salin ke clipboard berhasil!'))
+      .catch(() => toast.error('Gagal menyalin teks.'));
+  };
 
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="main-content">
         <div className="rca-container">
-          
+
           {/* Header */}
           <div className="rca-page-header">
             <div>
@@ -347,12 +410,31 @@ _Dibuat otomatis via App RCA_`;
               <div className="rca-transcript-area">
                 <div className="rca-transcript-label">
                   <span>Transkrip Teks (Bisa Diedit / Ketik Manual):</span>
-                  <span className="rca-transcript-count">{transcript.length} karakter</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* Fitur 1: badge enhance */}
+                    {isEnhancing && (
+                      <span className="rca-enhance-badge loading">
+                        <div className="spinner-xs" /> Merapikan...
+                      </span>
+                    )}
+                    {enhanceDone && !isEnhancing && (
+                      <span className="rca-enhance-badge done">
+                        <CheckCheck size={12} /> Teks dirapikan otomatis
+                      </span>
+                    )}
+                    {/* Fitur 1: tombol urungkan */}
+                    {hasBeenEnhanced && originalTranscript && (
+                      <button className="rca-undo-enhance-btn" onClick={handleUndoEnhance} title="Urungkan perapian teks">
+                        <Undo2 size={12} /> Urungkan
+                      </button>
+                    )}
+                    <span className="rca-transcript-count">{transcript.length} karakter</span>
+                  </div>
                 </div>
                 <textarea
-                  className="rca-transcript"
+                  className={`rca-transcript ${isEnhancing ? 'enhancing' : ''}`}
                   value={transcript}
-                  onChange={(e) => setTranscript(e.target.value)}
+                  onChange={handleTranscriptChange}
                   placeholder="Ketik laporan Anda secara langsung di sini atau gunakan perekaman suara untuk mengisi otomatis."
                 />
               </div>
@@ -384,7 +466,7 @@ _Dibuat otomatis via App RCA_`;
               <button
                 className="rca-analyze-btn"
                 onClick={handleAnalyze}
-                disabled={isAnalyzing || !transcript.trim() || !reportName.trim() || !reportNip.trim()}
+                disabled={isAnalyzing || isEnhancing || !transcript.trim() || !reportName.trim() || !reportNip.trim()}
               >
                 {isAnalyzing ? (
                   <>
@@ -401,10 +483,8 @@ _Dibuat otomatis via App RCA_`;
             </div>
           </div>
 
-          {/* Panel Kanan: Hasil Analisis & Riwayat */}
+          {/* Panel Kanan: Hasil Analisis */}
           <div className="rca-panel">
-            
-            {/* Hasil Analisis RCA */}
             <div className="rca-results-card">
               <div className="card-label">
                 <ListTodo size={14} />
@@ -424,11 +504,11 @@ _Dibuat otomatis via App RCA_`;
                     <Sparkles size={28} />
                   </div>
                   <h3>Belum Ada Hasil Analisis</h3>
-                  <p>Mulai dengan mengetik laporan Anda langsung atau merekam suara, lalu klik tombol "Analisis dengan AI".</p>
+                  <p>Mulai dengan mengetik laporan Anda langsung atau merekam suara, lalu klik tombol &quot;Analisis dengan AI&quot;.</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  
+
                   {/* Judul Laporan */}
                   <div className="rca-field-group">
                     <label className="rca-field-label">
@@ -492,10 +572,7 @@ _Dibuat otomatis via App RCA_`;
                           </button>
                         </div>
                       ))}
-                      <button
-                        className="rca-add-btn"
-                        onClick={() => addArrayItem('penyebab')}
-                      >
+                      <button className="rca-add-btn" onClick={() => addArrayItem('penyebab')}>
                         <Plus size={14} /> Tambah Penyebab
                       </button>
                     </div>
@@ -542,6 +619,48 @@ _Dibuat otomatis via App RCA_`;
                     </div>
                   </div>
 
+                  {/* Fitur 3: Panel Rekomendasi AI */}
+                  {result.rekomendasi && result.rekomendasi.length > 0 && (
+                    <div className="rca-rekomendasi-panel">
+                      <div className="rca-rekomendasi-header">
+                        <Lightbulb size={15} />
+                        <span>Rekomendasi AI</span>
+                      </div>
+                      <div className="rca-rekomendasi-list">
+                        {result.rekomendasi.map((rek, idx) => (
+                          <div key={idx} className="rca-rekomendasi-item">
+                            <div className="rca-rekomendasi-content">
+                              <span className={`rca-sumber-badge ${rek.sumber === 'internal' ? 'internal' : 'industri'}`}>
+                                {rek.sumber === 'internal' ? 'Internal' : 'Industri'}
+                              </span>
+                              <p className="rca-rekomendasi-text">{rek.isi}</p>
+                            </div>
+                            <div className="rca-rekomendasi-actions">
+                              <button
+                                className="rca-rek-btn"
+                                title="Salin teks rekomendasi"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(rek.isi)
+                                    .then(() => toast.success('Rekomendasi disalin.'))
+                                    .catch(() => toast.error('Gagal menyalin.'));
+                                }}
+                              >
+                                <Copy size={13} />
+                              </button>
+                              <button
+                                className="rca-rek-btn add"
+                                title="Tambahkan ke Tindakan"
+                                onClick={() => addRekomendasiAsTindakan(rek.isi)}
+                              >
+                                <Plus size={13} /> Tindakan
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tombol Aksi */}
                   <div className="rca-actions">
                     <button className="rca-btn rca-btn-save" onClick={handleSaveReport}>
@@ -562,7 +681,7 @@ _Dibuat otomatis via App RCA_`;
               )}
             </div>
           </div>
-        
+
         </div>
       </main>
     </div>

@@ -9,6 +9,7 @@ const REPORT_FIELDS_ALLOWED = [
   'penyebab',
   'tindakan',
   'transcript',
+  'original_transcript',
   'language',
   'created_by_user_id',
   'updated_by_user_id',

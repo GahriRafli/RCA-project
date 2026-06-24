@@ -15,6 +15,7 @@ export default function RCAHistoryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [showOriginal, setShowOriginal] = useState(false); // Fitur 4
 
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -55,6 +56,7 @@ export default function RCAHistoryPage() {
 
   const selectReport = (report) => {
     setSelectedReport(normalizeReport(report));
+    setShowOriginal(false); // Fitur 4: reset saat ganti laporan
   };
 
   const normalizeReport = (report) => ({
@@ -314,6 +316,26 @@ _Dibuat otomatis via App RCA_`;
                     <label className="rca-field-label">Root Cause</label>
                     <textarea className="rca-field-input" value={selectedReport.root_cause} onChange={(e) => updateSelected('root_cause', e.target.value)} />
                   </div>
+                  {/* Fitur 4: Transkrip Asli (hanya tampil jika berbeda dari transcript) */}
+                  {selectedReport.original_transcript &&
+                    selectedReport.original_transcript !== selectedReport.transcript && (
+                    <div className="rca-field-group">
+                      <button
+                        type="button"
+                        className="rca-original-toggle"
+                        onClick={() => setShowOriginal(v => !v)}
+                      >
+                        {showOriginal ? '▲ Sembunyikan Transkrip Asli' : '▼ Lihat Transkrip Asli (Sebelum Dirapikan)'}
+                      </button>
+                      {showOriginal && (
+                        <div className="rca-original-box">
+                          <span className="rca-original-label">📝 Teks asli sebelum auto-enhance:</span>
+                          <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{selectedReport.original_transcript}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="rca-field-group">
                     <label className="rca-field-label">Faktor Penyebab</label>
                     <div className="rca-list-field">
