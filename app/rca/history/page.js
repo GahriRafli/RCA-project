@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
   Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History, Clipboard,
@@ -24,6 +24,7 @@ export default function RCAHistoryPage() {
   const [recurringError, setRecurringError] = useState('');
   const [recurringMessage, setRecurringMessage] = useState('');
   const [activeIssue, setActiveIssue] = useState(null); // modal detail
+  const detailPanelRef = useRef(null);
 
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -347,6 +348,9 @@ _Dibuat otomatis via App RCA_`;
                                 if (!matched) return;
                                 selectReport(matched);
                                 setActiveIssue(null);
+                                setTimeout(() => {
+                                  detailPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }, 100);
                               }}
                               title={matched ? `Buka laporan: ${matched.judul}` : 'Laporan tidak ditemukan'}
                             >
@@ -455,7 +459,7 @@ _Dibuat otomatis via App RCA_`;
               </div>
             </div>
 
-            <div className="rca-history-card rca-history-detail-card">
+            <div className="rca-history-card rca-history-detail-card" ref={detailPanelRef}>
               <div className="card-label">
                 <Edit3 size={14} /> Detail Laporan
               </div>
