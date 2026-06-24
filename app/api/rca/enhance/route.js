@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 export async function POST(request) {
   try {
     let body;
@@ -15,13 +13,10 @@ export async function POST(request) {
       return Response.json({ error: 'Transkrip tidak boleh kosong' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return Response.json({ error: 'GEMINI_API_KEY belum dikonfigurasi' }, { status: 500 });
+    const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_TOKEN;
+    if (!hfToken) {
+      return Response.json({ error: 'HF_TOKEN belum dikonfigurasi' }, { status: 500 });
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const lang = language === 'en' ? 'English' : 'Bahasa Indonesia';
 
@@ -43,8 +38,29 @@ ${transcript}
 
 Teks yang sudah dirapikan:`;
 
-    const result = await model.generateContent(prompt);
-    const enhanced = result.response.text().trim();
+    const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/Llama-3.3-70B-Instruct',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1024,
+        temperature: 0.2,
+      }),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
+    }
+
+    const data = await res.json();
+    const enhanced = data?.choices?.[0]?.message?.content?.trim() || '';
+
+    if (!enhanced) throw new Error('HuggingFace tidak mengembalikan teks');
 
     return Response.json({ enhanced });
   } catch (err) {
