@@ -1,17 +1,12 @@
-import { supabase } from '@/lib/db';
+import pool from '@/lib/db';
 
 export async function GET() {
   try {
-    // Query root_cause dari 100 laporan terbaru, filter null/kosong
-    const { data, error } = await supabase
-      .from('reports')
-      .select('root_cause')
-      .order('created_at', { ascending: false })
-      .limit(100);
+    const [rows] = await pool.query(
+      'SELECT root_cause FROM reports WHERE root_cause IS NOT NULL AND root_cause != "" ORDER BY created_at DESC LIMIT 100'
+    );
 
-    if (error) throw error;
-
-    const rootCauses = (data || [])
+    const rootCauses = (rows || [])
       .map((r) => r.root_cause?.trim())
       .filter(Boolean);
 

@@ -1,27 +1,22 @@
-import { supabase } from '@/lib/db';
+import pool from '@/lib/db';
 
-// Fitur 2: Ambil 20 laporan terakhir sebagai knowledge internal
-// Tidak mengambil name/nip/transcript untuk menjaga privasi & hemat token
 async function fetchKnowledgeContext() {
   try {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('judul, root_cause, penyebab, tindakan')
-      .order('created_at', { ascending: false })
-      .limit(20);
+    const [rows] = await pool.query(
+      'SELECT judul, root_cause, penyebab, tindakan FROM reports ORDER BY created_at DESC LIMIT 20'
+    );
 
-    if (error || !data || data.length === 0) return '';
+    if (!rows || rows.length === 0) return '';
 
     const MAX_KNOWLEDGE_CHARS = 4000;
     let knowledgeBlock = '';
 
-    for (const report of data) {
-      const tindakanList = Array.isArray(report.tindakan)
-        ? report.tindakan.map((t) => (typeof t === 'object' ? t.text : t)).filter(Boolean).slice(0, 5).join('; ')
-        : '';
-      const penyebabList = Array.isArray(report.penyebab)
-        ? report.penyebab.slice(0, 3).join('; ')
-        : '';
+    for (const report of rows) {
+      const tindakanRaw = typeof report.tindakan === 'string' ? JSON.parse(report.tindakan || '[]') : (report.tindakan || []);
+      const penyebabRaw = typeof report.penyebab === 'string' ? JSON.parse(report.penyebab || '[]') : (report.penyebab || []);
+
+      const tindakanList = tindakanRaw.map((t) => (typeof t === 'object' ? t.text : t)).filter(Boolean).slice(0, 5).join('; ');
+      const penyebabList = penyebabRaw.slice(0, 3).join('; ');
 
       const entry = `- Judul: ${report.judul || '-'} | Root Cause: ${report.root_cause || '-'} | Penyebab: ${penyebabList || '-'} | Solusi: ${tindakanList || '-'}\n`;
 
