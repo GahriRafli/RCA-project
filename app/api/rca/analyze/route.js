@@ -1,10 +1,22 @@
-import pool from '@/lib/db';
+import pool, { useMySQL, supabase } from '@/lib/db';
 
 async function fetchKnowledgeContext() {
   try {
-    const [rows] = await pool.query(
-      'SELECT judul, root_cause, penyebab, tindakan FROM reports ORDER BY created_at DESC LIMIT 20'
-    );
+    let rows;
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'SELECT judul, root_cause, penyebab, tindakan FROM reports ORDER BY created_at DESC LIMIT 20'
+      );
+      rows = result;
+    } else {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('judul, root_cause, penyebab, tindakan')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      rows = data;
+    }
 
     if (!rows || rows.length === 0) return '';
 

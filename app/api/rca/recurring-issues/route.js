@@ -1,10 +1,22 @@
-import pool from '@/lib/db';
+import pool, { useMySQL, supabase } from '@/lib/db';
 
 export async function GET() {
   try {
-    const [rows] = await pool.query(
-      'SELECT root_cause FROM reports WHERE root_cause IS NOT NULL AND root_cause != "" ORDER BY created_at DESC LIMIT 100'
-    );
+    let rows;
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'SELECT root_cause FROM reports WHERE root_cause IS NOT NULL AND root_cause != "" ORDER BY created_at DESC LIMIT 100'
+      );
+      rows = result;
+    } else {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('root_cause')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      rows = data;
+    }
 
     const rootCauses = (rows || [])
       .map((r) => r.root_cause?.trim())
