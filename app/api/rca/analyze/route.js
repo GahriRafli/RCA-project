@@ -1,4 +1,5 @@
 import pool, { useMySQL, supabase } from '@/lib/db';
+import { callAI, extractJSON } from '@/lib/ai';
 
 async function fetchKnowledgeContext() {
   try {
@@ -58,14 +59,6 @@ export async function POST(request) {
       return Response.json({ error: 'Transkrip tidak boleh kosong' }, { status: 400 });
     }
 
-    const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_TOKEN;
-    if (!hfToken) {
-      return Response.json(
-        { error: 'HF_TOKEN belum dikonfigurasi di server' },
-        { status: 500 }
-      );
-    }
-
     // Fitur 2: Ambil knowledge dari laporan sebelumnya
     const knowledgeContext = await fetchKnowledgeContext();
     const knowledgeSection = knowledgeContext
@@ -108,41 +101,17 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
   ]
 }`;
 
-    const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/Llama-3.3-70B-Instruct',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 2048,
-        temperature: 0.2,
-      }),
+    const responseText = await callAI({
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens: 2048,
+      temperature: 0.2,
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
-    }
-
-    const hfData = await res.json();
-    let responseText = hfData?.choices?.[0]?.message?.content || '';
-
     if (!responseText.trim()) {
-      throw new Error('HuggingFace tidak mengembalikan konten');
+      throw new Error('AI tidak mengembalikan konten');
     }
 
-    // Bersihkan markdown code block jika ada
-    let cleaned = responseText.trim();
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-    }
-
-    // Ekstrak JSON jika ada teks sebelum/sesudah kurung kurawal
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (jsonMatch) cleaned = jsonMatch[0];
+    let cleaned = extractJSON(responseText);
 
     let analysis;
     try {

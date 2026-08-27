@@ -1,4 +1,5 @@
 import pool, { useMySQL, supabase } from '@/lib/db';
+import { callAI, extractJSON } from '@/lib/ai';
 
 export async function GET() {
   try {
@@ -32,11 +33,6 @@ export async function GET() {
       );
     }
 
-    const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_TOKEN;
-    if (!hfToken) {
-      return Response.json({ error: 'HF_TOKEN belum dikonfigurasi' }, { status: 500 });
-    }
-
     const listFormatted = rootCauses.map((rc, i) => `${i + 1}. ${rc}`).join('\n');
 
     const prompt = `Berikut adalah daftar root cause dari laporan insiden yang tersimpan.
@@ -62,36 +58,13 @@ Jangan mengarang kelompok yang tidak ada datanya.
 Daftar root cause:
 ${listFormatted}`;
 
-    const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/Llama-3.3-70B-Instruct',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1024,
-        temperature: 0.1,
-      }),
+    const raw = await callAI({
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens: 1024,
+      temperature: 0.1,
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
-    }
-
-    const hfData = await res.json();
-    let raw = hfData?.choices?.[0]?.message?.content || '';
-
-    // Strip markdown fence jika ada
-    let cleaned = raw.trim();
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-    }
-    // Ekstrak JSON object
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (jsonMatch) cleaned = jsonMatch[0];
+    let cleaned = extractJSON(raw);
 
     let parsed;
     try {
