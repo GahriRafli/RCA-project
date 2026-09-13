@@ -87,7 +87,7 @@ ${transcript}
 
 Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block):
 {
-  "judul": "Judul singkat laporan (maks 10 kata)",
+  "judul": "Judul singkat insiden (maks 7 kata, HANYA nama insiden, tanpa root cause, tanpa pipe |, tanpa tambahan apapun)",
   "ringkasan": "Ringkasan masalah dalam 1-2 kalimat",
   "root_cause": "Akar masalah utama yang teridentifikasi dari transkrip",
   "penyebab": ["Faktor penyebab 1", "Faktor penyebab 2"],
