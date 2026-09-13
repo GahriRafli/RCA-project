@@ -1,4 +1,5 @@
 import pool, { useMySQL, supabase } from '@/lib/db';
+import { sendTelegramNotification } from '@/lib/telegram';
 
 function parseJson(val) {
   if (!val) return [];
@@ -87,7 +88,9 @@ export async function POST(request) {
         ]
       );
       const [rows] = await pool.query('SELECT * FROM reports WHERE id = ?', [id]);
-      return Response.json(formatRow(rows[0]), { status: 201 });
+      const saved = formatRow(rows[0]);
+      sendTelegramNotification(saved);
+      return Response.json(saved, { status: 201 });
     }
 
     const report = {
@@ -107,7 +110,9 @@ export async function POST(request) {
     };
     const { data, error } = await supabase.from('reports').insert([report]).select();
     if (error) throw error;
-    return Response.json(formatRow(data?.[0] || report), { status: 201 });
+    const saved = formatRow(data?.[0] || report);
+    sendTelegramNotification(saved);
+    return Response.json(saved, { status: 201 });
   } catch (err) {
     console.error('RCA Reports POST Error:', err);
     return Response.json({ error: 'Gagal menyimpan laporan', details: err?.message }, { status: 500 });
