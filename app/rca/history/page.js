@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
   Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History, Clipboard,
-  TrendingUp, RotateCcw, MessageSquare
+  TrendingUp, RotateCcw, MessageSquare, FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '../../rca/rca.css';
@@ -272,6 +272,50 @@ _Dibuat otomatis via App RCA_`;
     }
   };
 
+  const exportExcel = async (useFiltered) => {
+    const { utils, writeFile } = await import('xlsx');
+    const data = useFiltered ? filteredReports : reports;
+    if (data.length === 0) {
+      toast.error('Tidak ada data untuk diekspor.');
+      return;
+    }
+
+    const rows = data.map((r) => {
+      const norm = normalizeReport(r);
+      const penyebab = norm.penyebab.join('; ') || '-';
+      const tindakan = norm.tindakan.map((t) => `${t.done ? '[✓]' : '[ ]'} ${t.text}`).join('; ') || '-';
+      const statusDone = norm.tindakan.length > 0 && norm.tindakan.every((t) => t.done);
+      const status = norm.tindakan.length === 0 ? 'Belum ada tindakan' : statusDone ? 'Selesai' : 'Dalam Proses';
+      return {
+        'Tanggal': new Date(r.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+        'Nama Pelapor': r.name || '-',
+        'NIP': r.nip || '-',
+        'Judul': norm.judul || '-',
+        'Ringkasan': norm.ringkasan || '-',
+        'Root Cause': norm.root_cause || '-',
+        'Faktor Penyebab': penyebab,
+        'Tindakan': tindakan,
+        'Status': status,
+      };
+    });
+
+    const ws = utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 30 },
+      { wch: 35 }, { wch: 35 }, { wch: 40 }, { wch: 50 }, { wch: 18 },
+    ];
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Laporan RCA');
+
+    const fromLabel = filterDateFrom ? filterDateFrom : '';
+    const toLabel = filterDateTo ? filterDateTo : '';
+    const suffix = useFiltered && (fromLabel || toLabel)
+      ? `_${fromLabel || 'awal'}_sd_${toLabel || 'akhir'}`
+      : useFiltered ? '_filtered' : '_semua';
+    writeFile(wb, `laporan_rca${suffix}.xlsx`);
+    toast.success(`${data.length} laporan berhasil diekspor ke Excel!`);
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Hapus laporan ini secara permanen?')) return;
     setDeletingId(id);
@@ -505,6 +549,16 @@ _Dibuat otomatis via App RCA_`;
                   {filteredReports.length > 0 && (
                     <button className="rca-btn rca-btn-wa-summary" type="button" onClick={copyWhatsAppSummary}>
                       <MessageSquare size={14} /> Salin Rangkuman ({filteredReports.length})
+                    </button>
+                  )}
+                </div>
+                <div className="rca-filter-actions rca-excel-actions">
+                  <button className="rca-btn rca-btn-excel" type="button" onClick={() => exportExcel(false)}>
+                    <FileSpreadsheet size={14} /> Export Semua ({reports.length})
+                  </button>
+                  {(filterDateFrom || filterDateTo || filterName || filterNip || filterTitle) && filteredReports.length > 0 && (
+                    <button className="rca-btn rca-btn-excel-filtered" type="button" onClick={() => exportExcel(true)}>
+                      <FileSpreadsheet size={14} /> Export Filter ({filteredReports.length})
                     </button>
                   )}
                 </div>
