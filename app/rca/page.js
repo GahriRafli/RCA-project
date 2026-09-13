@@ -31,6 +31,7 @@ export default function RCALaporanPage() {
   const [result, setResult] = useState(null);
   const [reportName, setReportName] = useState('');
   const [reportNip, setReportNip] = useState('');
+  const [reportDate, setReportDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   // Inisialisasi Web Speech API
   useEffect(() => {
@@ -269,6 +270,7 @@ export default function RCALaporanPage() {
       language,
       name: reportName.trim(),
       nip: reportNip.trim(),
+      created_at: reportDate ? new Date(reportDate).toISOString() : new Date().toISOString(),
       created_by_user_id: null,
       created_by_user_name: reportName.trim() || null,
     };
@@ -304,6 +306,7 @@ export default function RCALaporanPage() {
     setResult(null);
     setReportName('');
     setReportNip('');
+    setReportDate(new Date().toISOString().slice(0, 10));
     setError('');
     toast.success('Form telah direset.');
   };
@@ -462,6 +465,13 @@ _Dibuat otomatis via App RCA_`;
                     value={reportNip}
                     onChange={(e) => setReportNip(e.target.value.replace(/\D/g, ''))}
                     placeholder="NIP"
+                  />
+                  <input
+                    type="date"
+                    className="rca-field-input"
+                    value={reportDate}
+                    onChange={(e) => setReportDate(e.target.value)}
+                    title="Tanggal Lapor"
                   />
                 </div>
               </div>
