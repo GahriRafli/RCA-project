@@ -89,7 +89,7 @@ export async function POST(request) {
       );
       const [rows] = await pool.query('SELECT * FROM reports WHERE id = ?', [id]);
       const saved = formatRow(rows[0]);
-      sendTelegramNotification(saved);
+      await sendTelegramNotification(saved);
       return Response.json(saved, { status: 201 });
     }
 
@@ -111,7 +111,7 @@ export async function POST(request) {
     const { data, error } = await supabase.from('reports').insert([report]).select();
     if (error) throw error;
     const saved = formatRow(data?.[0] || report);
-    sendTelegramNotification(saved);
+    await sendTelegramNotification(saved);
     return Response.json(saved, { status: 201 });
   } catch (err) {
     console.error('RCA Reports POST Error:', err);
