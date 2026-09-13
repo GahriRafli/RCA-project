@@ -1,27 +1,35 @@
-import { supabase } from '@/lib/db';
+import pool, { useMySQL, supabase } from '@/lib/db';
+import { callAI, extractJSON } from '@/lib/ai';
 
-// Fitur 2: Ambil 20 laporan terakhir sebagai knowledge internal
-// Tidak mengambil name/nip/transcript untuk menjaga privasi & hemat token
 async function fetchKnowledgeContext() {
   try {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('judul, root_cause, penyebab, tindakan')
-      .order('created_at', { ascending: false })
-      .limit(20);
+    let rows;
+    if (useMySQL) {
+      const [result] = await pool.query(
+        'SELECT judul, root_cause, penyebab, tindakan FROM reports ORDER BY created_at DESC LIMIT 20'
+      );
+      rows = result;
+    } else {
+      const { data, error } = await supabase
+        .from('reports')
+        .select('judul, root_cause, penyebab, tindakan')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      rows = data;
+    }
 
-    if (error || !data || data.length === 0) return '';
+    if (!rows || rows.length === 0) return '';
 
     const MAX_KNOWLEDGE_CHARS = 4000;
     let knowledgeBlock = '';
 
-    for (const report of data) {
-      const tindakanList = Array.isArray(report.tindakan)
-        ? report.tindakan.map((t) => (typeof t === 'object' ? t.text : t)).filter(Boolean).slice(0, 5).join('; ')
-        : '';
-      const penyebabList = Array.isArray(report.penyebab)
-        ? report.penyebab.slice(0, 3).join('; ')
-        : '';
+    for (const report of rows) {
+      const tindakanRaw = typeof report.tindakan === 'string' ? JSON.parse(report.tindakan || '[]') : (report.tindakan || []);
+      const penyebabRaw = typeof report.penyebab === 'string' ? JSON.parse(report.penyebab || '[]') : (report.penyebab || []);
+
+      const tindakanList = tindakanRaw.map((t) => (typeof t === 'object' ? t.text : t)).filter(Boolean).slice(0, 5).join('; ');
+      const penyebabList = penyebabRaw.slice(0, 3).join('; ');
 
       const entry = `- Judul: ${report.judul || '-'} | Root Cause: ${report.root_cause || '-'} | Penyebab: ${penyebabList || '-'} | Solusi: ${tindakanList || '-'}\n`;
 
@@ -49,14 +57,6 @@ export async function POST(request) {
 
     if (!transcript || transcript.trim().length === 0) {
       return Response.json({ error: 'Transkrip tidak boleh kosong' }, { status: 400 });
-    }
-
-    const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_TOKEN;
-    if (!hfToken) {
-      return Response.json(
-        { error: 'HF_TOKEN belum dikonfigurasi di server' },
-        { status: 500 }
-      );
     }
 
     // Fitur 2: Ambil knowledge dari laporan sebelumnya
@@ -87,7 +87,7 @@ ${transcript}
 
 Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block):
 {
-  "judul": "Judul singkat laporan (maks 10 kata)",
+  "judul": "Judul singkat insiden (maks 7 kata, HANYA nama insiden, tanpa root cause, tanpa pipe |, tanpa tambahan apapun)",
   "ringkasan": "Ringkasan masalah dalam 1-2 kalimat",
   "root_cause": "Akar masalah utama yang teridentifikasi dari transkrip",
   "penyebab": ["Faktor penyebab 1", "Faktor penyebab 2"],
@@ -101,41 +101,17 @@ Format JSON yang HARUS diikuti (jawab HANYA JSON ini, tanpa markdown code block)
   ]
 }`;
 
-    const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/Llama-3.3-70B-Instruct',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 2048,
-        temperature: 0.2,
-      }),
+    const responseText = await callAI({
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens: 2048,
+      temperature: 0.2,
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
-    }
-
-    const hfData = await res.json();
-    let responseText = hfData?.choices?.[0]?.message?.content || '';
-
     if (!responseText.trim()) {
-      throw new Error('HuggingFace tidak mengembalikan konten');
+      throw new Error('AI tidak mengembalikan konten');
     }
 
-    // Bersihkan markdown code block jika ada
-    let cleaned = responseText.trim();
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-    }
-
-    // Ekstrak JSON jika ada teks sebelum/sesudah kurung kurawal
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (jsonMatch) cleaned = jsonMatch[0];
+    let cleaned = extractJSON(responseText);
 
     let analysis;
     try {

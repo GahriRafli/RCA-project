@@ -1594,6 +1594,60 @@ textarea.rca-field-input {
   }
 }
 
+/* ── Date shortcuts ─────────────────────────────────────── */
+.rca-date-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.rca-shortcut-btn {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rca-shortcut-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.rca-shortcut-clear {
+  color: var(--danger, #e74c3c);
+  border-color: var(--danger, #e74c3c);
+}
+
+.rca-shortcut-clear:hover {
+  background: var(--danger, #e74c3c);
+  color: #fff;
+}
+
+/* ── WhatsApp summary button ────────────────────────────── */
+.rca-btn-wa-summary {
+  background: #25D366;
+  color: #fff;
+  border: none;
+  gap: 6px;
+}
+
+.rca-btn-wa-summary:hover {
+  background: #1ebe5d;
+}
+
+/* ── Recurring actions row ──────────────────────────────── */
+.rca-recurring-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 @media (max-width: 768px) {
   .rca-container {
     padding: var(--space-md);

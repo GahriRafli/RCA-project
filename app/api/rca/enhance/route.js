@@ -1,21 +1,15 @@
+import { callAI } from '@/lib/ai';
+
 export async function POST(request) {
   try {
     let body;
-    try {
-      body = await request.json();
-    } catch {
+    try { body = await request.json(); } catch {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
     const { transcript, language } = body || {};
-
     if (!transcript || transcript.trim().length === 0) {
       return Response.json({ error: 'Transkrip tidak boleh kosong' }, { status: 400 });
-    }
-
-    const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_TOKEN;
-    if (!hfToken) {
-      return Response.json({ error: 'HF_TOKEN belum dikonfigurasi' }, { status: 500 });
     }
 
     const lang = language === 'en' ? 'English' : 'Bahasa Indonesia';
@@ -34,26 +28,21 @@ ATURAN WAJIB — ikuti semua tanpa terkecuali:
    - "hari kiamat buat tim" → "gangguan besar bagi tim"
    - "mati suri total" → "tidak bisa diakses sama sekali"
    - "jantung perusahaan" → hapus, cukup sebut nama sistemnya
-   - "kena serangan jantung massal" → ganti dengan deskripsi dampak faktual
    - "bom waktu yang meledak" → "menyebabkan konflik yang akhirnya memicu kegagalan"
-   - "musuh dalam selimut" → "justru menjadi penyebab masalah"
    - "bolong-bolong kayak keju swiss" → "tidak lengkap"
-   - "kayak janji politisi" → hapus total, tidak ada nilai faktual
-   - "pemadam kebakaran yang telat" → "tim baru mengetahui masalah setelah terjadi"
-   - "gedung udah hampir rubuh" → hapus, deskripsikan kondisi aktualnya saja
 
-5. KATA KASAR & EKSPRESI EMOSIONAL: Hapus total tanpa diganti apapun. Contoh: "anjir", "sial", "brengsek", "kampret", "sialan", dan sejenisnya.
+5. KATA KASAR & EKSPRESI EMOSIONAL: Hapus total. Contoh: "anjir", "sial", "brengsek", "kampret".
 
-6. KONTEN TIDAK RELEVAN: Hapus total kalimat/potongan yang tidak relevan dengan laporan insiden — misalnya obrolan ke orang lain yang terekam, instruksi ke perangkat, atau interupsi rekaman. Contoh: "matiin tv dulu", "heh kamu ngapain", "sebentar ada telepon".
+6. KONTEN TIDAK RELEVAN: Hapus total kalimat yang tidak relevan dengan laporan insiden (obrolan terekam, instruksi ke perangkat, interupsi).
 
-7. AKRONIM & SINGKATAN TEKNIS: Kenali dari konteks dan tulis dalam format baku huruf kapital, meski di input ditulis salah karena speech-to-text. Contoh: "si api key" → "API key", "hris" → "HRIS", "ats" → "ATS", "pic" → "PIC", "sop" → "SOP", "es el a" → "SLA".
+7. AKRONIM & SINGKATAN TEKNIS: Tulis dalam format baku huruf kapital. Contoh: "si api key" → "API key", "hris" → "HRIS", "pic" → "PIC", "sop" → "SOP".
 
-8. CODE-SWITCHING (campur bahasa): Terjemahkan kata/frasa bahasa Inggris yang bukan istilah teknis baku ke ${lang} formal. Contoh: "our team" → "tim kami", "the root cause" → "akar masalah", "obviously" → hapus atau ganti "tentu saja". PERTAHANKAN istilah teknis IT/industri yang lazim dipakai dalam bahasa Indonesia seperti: rollback, deployment, staging, API key, full table scan, latency, alert threshold, downtime, escalation.
+8. CODE-SWITCHING: Terjemahkan frasa Inggris non-teknis ke ${lang} formal. Pertahankan istilah teknis IT seperti: rollback, deployment, staging, API key, latency, downtime.
 
 9. JANGAN menambahkan informasi yang tidak ada di teks asli.
-10. JANGAN menyimpulkan, menganalisis, atau membuat kesimpulan — murni perapian teks.
+10. JANGAN menyimpulkan atau menganalisis — murni perapian teks.
 11. Output harus dalam ${lang}.
-12. Jawab HANYA dengan teks yang sudah dirapikan, tanpa penjelasan, catatan, atau komentar apapun.
+12. Jawab HANYA dengan teks yang sudah dirapikan, tanpa penjelasan apapun.
 
 Teks asli:
 """
@@ -62,36 +51,17 @@ ${transcript}
 
 Teks yang sudah dirapikan:`;
 
-    const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/Llama-3.3-70B-Instruct',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1024,
-        temperature: 0.2,
-      }),
+    const enhanced = await callAI({
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens: 1024,
+      temperature: 0.2,
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`HuggingFace API error: ${res.status} ${txt}`);
-    }
+    if (!enhanced.trim()) throw new Error('AI tidak mengembalikan teks');
 
-    const data = await res.json();
-    const enhanced = data?.choices?.[0]?.message?.content?.trim() || '';
-
-    if (!enhanced) throw new Error('HuggingFace tidak mengembalikan teks');
-
-    return Response.json({ enhanced });
+    return Response.json({ enhanced: enhanced.trim() });
   } catch (err) {
     console.error('RCA Enhance Error:', err);
-    return Response.json(
-      { error: `Gagal merapikan teks: ${err.message || err}` },
-      { status: 500 }
-    );
+    return Response.json({ error: `Gagal merapikan teks: ${err.message || err}` }, { status: 500 });
   }
 }
