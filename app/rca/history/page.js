@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import {
   Search, Trash2, Edit3, Save, RefreshCw, AlertTriangle, CalendarDays, X, Plus, History, Clipboard,
-  TrendingUp, RotateCcw
+  TrendingUp, RotateCcw, MessageSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import '../../rca/rca.css';
@@ -202,6 +202,76 @@ _Dibuat otomatis via App RCA_`;
   }
 };
 
+  const setDateShortcut = (type) => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (type === 'week') {
+      const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
+      const from = new Date(now); from.setDate(now.getDate() - day);
+      const to = new Date(from); to.setDate(from.getDate() + 6);
+      setFilterDateFrom(fmt(from)); setFilterDateTo(fmt(to));
+    } else if (type === 'month') {
+      setFilterDateFrom(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`);
+      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setFilterDateTo(fmt(last));
+    } else if (type === 'lastmonth') {
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const last = new Date(now.getFullYear(), now.getMonth(), 0);
+      setFilterDateFrom(fmt(first)); setFilterDateTo(fmt(last));
+    } else if (type === 'year') {
+      setFilterDateFrom(`${now.getFullYear()}-01-01`);
+      setFilterDateTo(`${now.getFullYear()}-12-31`);
+    }
+  };
+
+  const copyWhatsAppSummary = async () => {
+    if (filteredReports.length === 0) return;
+
+    const fromLabel = filterDateFrom ? new Date(filterDateFrom + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+    const toLabel = filterDateTo ? new Date(filterDateTo + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+    const periodLine = (filterDateFrom || filterDateTo) ? `*Periode:* ${fromLabel} – ${toLabel}\n` : '';
+
+    const lines = filteredReports.map((r, i) => {
+      const norm = normalizeReport(r);
+      const penyebabText = norm.penyebab.length > 0
+        ? norm.penyebab.map((p) => `  - ${p}`).join('\n')
+        : '  -';
+      const tindakanText = norm.tindakan.length > 0
+        ? norm.tindakan.map((t) => `  ${t.done ? '✅' : '⬜'} ${t.text}`).join('\n')
+        : '  -';
+      const allDone = norm.tindakan.length > 0 && norm.tindakan.every((t) => t.done);
+      const status = norm.tindakan.length === 0 ? 'Belum ada tindakan' : allDone ? '✅ Selesai' : '🔄 Dalam Proses';
+      const tgl = new Date(r.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      return `*${i + 1}. ${norm.judul || '-'}*\n📅 ${tgl}\n🔍 *Root Cause:* ${norm.root_cause || '-'}\n⚠️ *Penyebab:*\n${penyebabText}\n🛠️ *Tindakan:*\n${tindakanText}\n📌 *Status:* ${status}`;
+    });
+
+    const text = `*RANGKUMAN LAPORAN RCA*\n${periodLine}*Total:* ${filteredReports.length} laporan\n\n` + lines.join('\n\n─────────────────────\n\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Rangkuman berhasil disalin!');
+    } catch {
+      toast.error('Gagal menyalin teks.');
+    }
+  };
+
+  const copyRecurringIssuesText = async () => {
+    if (recurringIssues.length === 0) return;
+    const lines = recurringIssues.map((issue, i) =>
+      `*${i + 1}. ${issue.tema}* (${issue.jumlah}x)\n   "${issue.contoh_root_cause || '-'}"`
+    );
+    const text = `*TOP RECURRING ISSUES*\n\n` + lines.join('\n\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Isu paling sering berhasil disalin!');
+    } catch {
+      toast.error('Gagal menyalin teks.');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Hapus laporan ini secara permanen?')) return;
     setDeletingId(id);
@@ -249,15 +319,22 @@ _Dibuat otomatis via App RCA_`;
                   <p>Top 5 isu yang paling sering muncul dari seluruh laporan</p>
                 </div>
               </div>
-              <button
-                className="rca-btn rca-btn-refresh rca-recurring-refresh"
-                onClick={fetchRecurringIssues}
-                disabled={recurringLoading}
-                title="Refresh recurring issues"
-              >
-                <RotateCcw size={13} className={recurringLoading ? 'spin-icon' : ''} />
-                Refresh
-              </button>
+              <div className="rca-recurring-actions">
+                {recurringIssues.length > 0 && (
+                  <button className="rca-btn rca-btn-wa-summary" type="button" onClick={copyRecurringIssuesText}>
+                    <MessageSquare size={13} /> Salin Isu Paling Sering
+                  </button>
+                )}
+                <button
+                  className="rca-btn rca-btn-refresh rca-recurring-refresh"
+                  onClick={fetchRecurringIssues}
+                  disabled={recurringLoading}
+                  title="Refresh recurring issues"
+                >
+                  <RotateCcw size={13} className={recurringLoading ? 'spin-icon' : ''} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {/* Loading skeleton */}
@@ -392,6 +469,16 @@ _Dibuat otomatis via App RCA_`;
               </div>
               <div className="rca-history-filters">
                 <div className="rca-field-group">
+                  <label className="rca-field-label">Rentang Cepat</label>
+                  <div className="rca-date-shortcuts">
+                    <button type="button" className="rca-shortcut-btn" onClick={() => setDateShortcut('week')}>Minggu Ini</button>
+                    <button type="button" className="rca-shortcut-btn" onClick={() => setDateShortcut('month')}>Bulan Ini</button>
+                    <button type="button" className="rca-shortcut-btn" onClick={() => setDateShortcut('lastmonth')}>Bulan Lalu</button>
+                    <button type="button" className="rca-shortcut-btn" onClick={() => setDateShortcut('year')}>Tahun Ini</button>
+                    <button type="button" className="rca-shortcut-btn rca-shortcut-clear" onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}>✕ Reset</button>
+                  </div>
+                </div>
+                <div className="rca-field-group">
                   <label className="rca-field-label">Dari Tanggal</label>
                   <input type="date" className="rca-field-input" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
                 </div>
@@ -411,9 +498,14 @@ _Dibuat otomatis via App RCA_`;
                   <label className="rca-field-label">Judul Laporan</label>
                   <input type="text" className="rca-field-input" placeholder="Judul mengandung..." value={filterTitle} onChange={(e) => setFilterTitle(e.target.value)} />
                 </div>
-                <button className="rca-btn rca-btn-refresh" type="button" onClick={fetchReports}>
+                  <button className="rca-btn rca-btn-refresh" type="button" onClick={fetchReports}>
                   <RefreshCw size={14} /> Muat Ulang
                 </button>
+                {filteredReports.length > 0 && (
+                  <button className="rca-btn rca-btn-wa-summary" type="button" onClick={copyWhatsAppSummary}>
+                    <MessageSquare size={14} /> Salin Rangkuman WhatsApp ({filteredReports.length})
+                  </button>
+                )}
               </div>
             </div>
 
