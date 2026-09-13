@@ -1,6 +1,8 @@
 import pool, { useMySQL, supabase } from '@/lib/db';
 import { callAI, extractJSON } from '@/lib/ai';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     let rows;
@@ -28,7 +30,7 @@ export async function GET() {
         { top_issues: [], message: 'Belum cukup data untuk analisis recurring issues' },
         {
           status: 200,
-          headers: { 'Cache-Control': 's-maxage=300' },
+          headers: { 'Cache-Control': 'no-store' },
         }
       );
     }
@@ -92,7 +94,7 @@ ${listFormatted}`;
       { top_issues },
       {
         status: 200,
-        headers: { 'Cache-Control': 's-maxage=300' },
+        headers: { 'Cache-Control': 'no-store' },
       }
     );
   } catch (err) {

@@ -62,7 +62,7 @@ export async function POST(request) {
     }
 
     const id       = body.id || crypto.randomUUID();
-    const now      = new Date().toISOString();
+    const now      = body.created_at ? new Date(body.created_at).toISOString() : new Date().toISOString();
     const penyebab = Array.isArray(body.penyebab) ? body.penyebab.map(String) : [];
     const tindakan = Array.isArray(body.tindakan) ? normalizeTindakan(body.tindakan) : [];
 
