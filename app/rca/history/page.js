@@ -468,7 +468,7 @@ _Dibuat otomatis via App RCA_`;
                 Filter Laporan
               </div>
               <div className="rca-history-filters">
-                <div className="rca-field-group">
+                <div className="rca-field-group rca-date-shortcuts-row">
                   <label className="rca-field-label">Rentang Cepat</label>
                   <div className="rca-date-shortcuts">
                     <button type="button" className="rca-shortcut-btn" onClick={() => setDateShortcut('week')}>Minggu Ini</button>
@@ -498,14 +498,16 @@ _Dibuat otomatis via App RCA_`;
                   <label className="rca-field-label">Judul Laporan</label>
                   <input type="text" className="rca-field-input" placeholder="Judul mengandung..." value={filterTitle} onChange={(e) => setFilterTitle(e.target.value)} />
                 </div>
+                  <div className="rca-filter-actions">
                   <button className="rca-btn rca-btn-refresh" type="button" onClick={fetchReports}>
-                  <RefreshCw size={14} /> Muat Ulang
-                </button>
-                {filteredReports.length > 0 && (
-                  <button className="rca-btn rca-btn-wa-summary" type="button" onClick={copyWhatsAppSummary}>
-                    <MessageSquare size={14} /> Salin Rangkuman WhatsApp ({filteredReports.length})
+                    <RefreshCw size={14} /> Muat Ulang
                   </button>
-                )}
+                  {filteredReports.length > 0 && (
+                    <button className="rca-btn rca-btn-wa-summary" type="button" onClick={copyWhatsAppSummary}>
+                      <MessageSquare size={14} /> Salin Rangkuman ({filteredReports.length})
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

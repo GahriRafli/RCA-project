@@ -1595,6 +1595,10 @@ textarea.rca-field-input {
 }
 
 /* ── Date shortcuts ─────────────────────────────────────── */
+.rca-date-shortcuts-row {
+  grid-column: 1 / -1;
+}
+
 .rca-date-shortcuts {
   display: flex;
   flex-wrap: wrap;
@@ -1603,7 +1607,7 @@ textarea.rca-field-input {
 }
 
 .rca-shortcut-btn {
-  padding: 4px 10px;
+  padding: 4px 12px;
   font-size: 0.75rem;
   border-radius: 20px;
   border: 1px solid var(--border);
@@ -1611,6 +1615,7 @@ textarea.rca-field-input {
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .rca-shortcut-btn:hover {
@@ -1629,12 +1634,28 @@ textarea.rca-field-input {
   color: #fff;
 }
 
+/* ── Filter action buttons row ──────────────────────────── */
+.rca-filter-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.rca-filter-actions .rca-btn {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
+}
+
 /* ── WhatsApp summary button ────────────────────────────── */
 .rca-btn-wa-summary {
   background: #25D366;
   color: #fff;
   border: none;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .rca-btn-wa-summary:hover {
@@ -1646,6 +1667,7 @@ textarea.rca-field-input {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {
