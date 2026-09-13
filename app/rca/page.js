@@ -26,6 +26,7 @@ export default function RCALaporanPage() {
 
   // Status & Hasil Analisis AI
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [reportName, setReportName] = useState('');
@@ -252,7 +253,7 @@ export default function RCALaporanPage() {
 
   // Simpan Laporan ke Database
   const handleSaveReport = async () => {
-    if (!result) return;
+    if (!result || isSaving) return;
     if (!reportName.trim() || !reportNip.trim()) {
       toast.error('Nama dan NIP harus diisi sebelum menyimpan laporan.');
       return;
@@ -273,6 +274,7 @@ export default function RCALaporanPage() {
     };
 
     const loadingToast = toast.loading('Menyimpan laporan...');
+    setIsSaving(true);
 
     try {
       const res = await fetch('/api/rca/reports', {
@@ -288,6 +290,8 @@ export default function RCALaporanPage() {
     } catch (err) {
       console.error(err);
       toast.error('Gagal menyimpan laporan.', { id: loadingToast });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -663,7 +667,7 @@ _Dibuat otomatis via App RCA_`;
 
                   {/* Tombol Aksi */}
                   <div className="rca-actions">
-                    <button className="rca-btn rca-btn-save" onClick={handleSaveReport}>
+                    <button className="rca-btn rca-btn-save" onClick={handleSaveReport} disabled={isSaving}>
                       <Save size={14} />
                       Simpan Laporan
                     </button>
